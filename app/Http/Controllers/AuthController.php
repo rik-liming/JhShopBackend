@@ -37,27 +37,26 @@ class AuthController extends Controller
             throw new ApiException(ApiCode::INVALID_INVITE_CODE);
         }
 
+        // 逻辑变动，所有注册用户默认是default角色，管理后台分配角色
         $role = 'default';
-        if ($request->role && in_array($request->role, [
-                'buyer',
-                'seller',
-                'autoBuyer'
-            ])) {
-            $role = $request->role;
+        // if ($request->role && in_array($request->role, [
+        //         'buyer',
+        //         'seller',
+        //         'autoBuyer'
+        //     ])) {
+        //     $role = $request->role;
 
-            // inviter是platform时，role是agent
-            if ($request->role == 'seller' && $inviter->role == 'platform') {
-                $role = 'agent';
-            }
-        }
+        //     // inviter是platform时，role是agent
+        //     if ($request->role == 'seller' && $inviter->role == 'platform') {
+        //         $role = 'agent';
+        //     }
+        // }
 
         // 使用事务，以防创建失败生成脏数据
         $newUser = DB::transaction(function() use ($request, $role, $inviter) {
 
             $root_agent_id = 0;
             $root_agent_name = '';
-            $now = Carbon::now();
-            $ip = $request->ip();
             $new_invite_code = null;
 
             if ($role == 'seller') {
@@ -65,8 +64,8 @@ class AuthController extends Controller
                 $root_agent_name = $inviter->root_agent_name;
             }
 
-            // agent或者seller，才有专属邀请码
-            if ($role == 'seller' || $role == 'agent') {
+            // agent才有专属邀请码
+            if ($role == 'agent') {
                 $new_invite_code = $this->generateUniqueInviteCode($role);
             }
 
@@ -79,8 +78,6 @@ class AuthController extends Controller
                 'role' => $role,
                 'root_agent_id' => $root_agent_id,
                 'root_agent_name' => $root_agent_name,
-                'last_login_ip'   => $ip,
-                'last_login_time' => $now,
                 'invite_code' => $new_invite_code,
             ]);
 
@@ -114,26 +111,29 @@ class AuthController extends Controller
             return ApiResponse::error(ApiCode::USER_EMAIL_PASSWORD_WRONG);
         }
 
+        $google2fa = new Google2FA();
         // 判断是否已绑定Google Authenticator
         if (!$user->two_factor_secret) {
             // 首次绑定逻辑（生成secret并存入用户信息）
-            $google2fa = new Google2FA();
             $secret = $google2fa->generateSecretKey();
 
             $user->two_factor_secret = $secret;
             $user->save();
 
+        }
+
+        // 以是否成功登录过，作为是否绑定过的依据
+        if (!$user->last_login_time) {
             $qrCodeUrl = $google2fa->getQRCodeUrl(
                 'JhShop',
                 $user->email,
-                $secret
+                $user->two_factor_secret,
             );
-
             return ApiResponse::success([
                 'qrCodeUrl' => $qrCodeUrl
             ]);
         }
-
+        
         // 返回需要输入OTP
         return ApiResponse::success([
             'needOtp' => true,
@@ -158,6 +158,12 @@ class AuthController extends Controller
         if (!$valid) {
             return ApiResponse::error(ApiCode::USER_2FA_INVALID);
         }
+
+        $now = Carbon::now();
+        $ip = $request->ip();
+        $user->last_login_ip = $ip;
+        $user->last_login_time = $now;
+        $user->save();
 
         // OTP验证通过后，生成Token并存入Redis
         $token = Str::random(64);
