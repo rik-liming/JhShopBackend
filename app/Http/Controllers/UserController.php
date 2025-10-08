@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\User;
 use App\Helpers\ApiResponse;
 use App\Enums\ApiCode;
+use App\Models\UserAccount;
 
 class UserController extends Controller
 {
@@ -30,12 +31,22 @@ class UserController extends Controller
             'role',
         )->find($userId);
 
+        $userAccount = UserAccount::select(
+            'total_balance',
+            'available_balance',
+        )
+        ->where('user_id', $userId)
+        ->first();
+
+        User::where('email', $request->email)->first();
+
         if (!$user) {
             return ApiResponse::error(ApiCode::USER_NOT_FOUND);
         }
 
         return ApiResponse::success([
             'user' => $user,
+            'account' => $userAccount,
         ]);
     }
 }

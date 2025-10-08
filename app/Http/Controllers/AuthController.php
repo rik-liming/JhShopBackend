@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\UserAccount;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
@@ -37,17 +38,26 @@ class AuthController extends Controller
             throw new ApiException(ApiCode::INVALID_INVITE_CODE);
         }
 
-        $user = User::create([
-            'inviter_id' => $inviter->id,
-            'inviter_name' => $inviter->user_name,
-            'user_name' => $request->email,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-            'role' => 'default',
-        ]);
+        // 使用事务，以防创建失败生成脏数据
+        $newUser = DB::transaction(function() use ($request, $inviter) {
+            $user = User::create([
+                'inviter_id' => $inviter->id,
+                'inviter_name' => $inviter->user_name,
+                'user_name' => $request->email,
+                'email' => $request->email,
+                'password' => Hash::make($request->password),
+                'role' => 'default',
+            ]);
+
+            $userAccount = UserAccount::create([
+                'user_id' => $user->id,
+            ]);
+
+            return $user;
+        });
 
         return ApiResponse::success([
-            'user' => $user
+            'user' => $newUser
         ]);
     }
 
@@ -124,7 +134,7 @@ class AuthController extends Controller
 
         // OTP验证通过后，生成Token并存入Redis
         $token = Str::random(64);
-        Redis::setex("login:token:$token", 1800, $user->id); // 600秒 = 10分钟
+        Redis::setex("login:token:$token", 3600, $user->id); // 600秒 = 10分钟
 
         return ApiResponse::success([
             'token' => $token,
