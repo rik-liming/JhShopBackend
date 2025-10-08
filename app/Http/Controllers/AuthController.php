@@ -47,7 +47,7 @@ class AuthController extends Controller
         ]);
 
         return ApiResponse::success([
-            'user' => $newUser
+            'user' => $user
         ]);
     }
 
@@ -63,6 +63,10 @@ class AuthController extends Controller
 
         if (!$user || !Hash::check($request->password, $user->password)) {
             return ApiResponse::error(ApiCode::USER_EMAIL_PASSWORD_WRONG);
+        }
+
+        if ($user->status !== 1) {
+            return ApiResponse::error(ApiCode::USER_ILLEGAL);
         }
 
         $google2fa = new Google2FA();
@@ -120,7 +124,7 @@ class AuthController extends Controller
 
         // OTP验证通过后，生成Token并存入Redis
         $token = Str::random(64);
-        Redis::setex("login:token:$token", 600, $user->id); // 600秒 = 10分钟
+        Redis::setex("login:token:$token", 1800, $user->id); // 600秒 = 10分钟
 
         return ApiResponse::success([
             'token' => $token,
@@ -136,24 +140,5 @@ class AuthController extends Controller
             Redis::del("login:token:$token");
         }
         return ApiResponse::success([]);
-    }
-
-    /**
-     * 生成唯一邀请码
-     */
-    protected function generateUniqueInviteCode($role)
-    {
-        if ($role == 'agent') {
-            $prefix = '88';
-        } else if ($role == 'seller') {
-            $prefix = '66';
-        }
-
-        do {
-            $code = $prefix . mt_rand(100000, 999999); // prefix + 6位随机数字
-            $exists = User::where('invite_code', $code)->exists();
-        } while ($exists);
-
-        return $code;
     }
 }

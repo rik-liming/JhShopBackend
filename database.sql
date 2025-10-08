@@ -110,7 +110,7 @@ CREATE TABLE `jh_user` (
   `invite_code` varchar(50) DEFAULT NULL COMMENT '邀请码',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  `status` tinyint(1) NOT NULL DEFAULT 1 COMMENT '状态：0禁用，1启用',
+  `status` tinyint(1) NOT NULL DEFAULT 1 COMMENT '状态：0禁用，1启用, -1删除',
   `two_factor_secret` varchar(255) DEFAULT '' COMMENT '二步验证密钥',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_email` (`email`),

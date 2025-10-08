@@ -16,6 +16,7 @@ class ApiCode
     const USER_EMAIL_PASSWORD_WRONG = 20002;
     const USER_NOT_FOUND = 20003;
     const USER_2FA_INVALID = 20004;
+    const USER_ILLEGAL = 20005;
 
     // admin相关
     const ADMIN_NAME_PASSWORD_WRONG = 30001;
@@ -32,6 +33,7 @@ class ApiCode
         self::USER_EMAIL_PASSWORD_WRONG => '邮箱或密码错误',
         self::USER_NOT_FOUND => '用户不存在',
         self::USER_2FA_INVALID => '验证码错误',
+        self::USER_ILLEGAL => '非法用户',
 
         self::ADMIN_NAME_PASSWORD_WRONG => '用户名或密码错误',
         self::ADMIN_NOT_FOUND => '账号不存在',

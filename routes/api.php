@@ -11,18 +11,19 @@ use App\Http\Controllers\AdminController;
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/verify_otp', [AuthController::class, 'verifyOtp']);
+Route::post('/logout', [AuthController::class, 'logout']);
 
 Route::middleware(['check.api.token'])->group(function () {
-    Route::post('/logout', [AuthController::class, 'logout']);
-
     Route::get('/user/info', [UserController::class, 'getUserInfo']);
 });
 
 Route::post('/admin/login', [AdminController::class, 'login']);
 Route::post('/admin/verify_otp', [AdminController::class, 'verifyOtp']);
+Route::post('/admin/logout', [AdminController::class, 'logout']);
 
 Route::middleware(['check.admin.token'])->group(function () {
-    Route::post('/admin/logout', [AdminController::class, 'logout']);
+    Route::get('/admin/user/page', [AdminController::class, 'getUserByPage']);
+    Route::put('/admin/user', [AdminController::class, 'updateUser']);
 });
 
 // Route::middleware('auth:sanctum')->group(function () {
