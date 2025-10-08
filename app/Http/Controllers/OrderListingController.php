@@ -56,6 +56,7 @@ class OrderListingController extends Controller
             $orderListing = OrderListing::create([
                 'user_id' => $userId, // 当前登录用户的ID
                 'amount' => $request->input('amount'),
+                'remain_amount' => $request->input('amount'),
                 'min_sale_amount' => $request->input('min_sale_amount'),
                 'payment_method' => $request->input('payment_method'),
                 'status' => 1, // 默认状态为在售
@@ -70,6 +71,38 @@ class OrderListingController extends Controller
 
         return ApiResponse::success([
             'id' => $newOrderListing->id,
+        ]);
+    }
+
+    public function getOrderListingByPage(Request $request)
+    {
+        // 验证输入参数
+        $validator = Validator::make($request->all(), [
+            'channel' => 'required|in:bank,alipay,wechat',
+        ]);
+
+        // 获取分页参数
+        $page = $request->input('page', 1);  // 当前页，默认是第1页
+        $pageSize = $request->input('pagesize', 100);  // 每页显示的记录数，默认是10条
+        $channel = $request->input('channel', '');  // 搜索关键词，默认空字符串
+
+        // 构建查询
+        $query = OrderListing::where('status', 1)
+                     ->where('payment_method', $request->channel);
+
+        // 获取符合条件的用户总数
+        $totalCount = $query->count();
+
+        // 分页
+        $users = $query->skip(($page - 1) * $pageSize)  // 计算分页的偏移量
+                    ->take($pageSize)  // 每页获取指定数量的用户
+                    ->get();
+
+        return ApiResponse::success([
+            'total' => $totalCount,  // 总记录数
+            'current_page' => $page,  // 当前页
+            'page_size' => $pageSize,  // 每页记录数
+            'orderListings' => $users,  // 当前页的挂单列表
         ]);
     }
 }
