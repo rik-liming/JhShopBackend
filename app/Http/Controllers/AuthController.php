@@ -37,60 +37,14 @@ class AuthController extends Controller
             throw new ApiException(ApiCode::INVALID_INVITE_CODE);
         }
 
-        // 逻辑变动，所有注册用户默认是default角色，管理后台分配角色
-        $role = 'default';
-        // if ($request->role && in_array($request->role, [
-        //         'buyer',
-        //         'seller',
-        //         'autoBuyer'
-        //     ])) {
-        //     $role = $request->role;
-
-        //     // inviter是platform时，role是agent
-        //     if ($request->role == 'seller' && $inviter->role == 'platform') {
-        //         $role = 'agent';
-        //     }
-        // }
-
-        // 使用事务，以防创建失败生成脏数据
-        $newUser = DB::transaction(function() use ($request, $role, $inviter) {
-
-            $root_agent_id = 0;
-            $root_agent_name = '';
-            $new_invite_code = null;
-
-            if ($role == 'seller') {
-                $root_agent_id = $inviter->root_agent_id;
-                $root_agent_name = $inviter->root_agent_name;
-            }
-
-            // agent才有专属邀请码
-            if ($role == 'agent') {
-                $new_invite_code = $this->generateUniqueInviteCode($role);
-            }
-
-            $user = User::create([
-                'inviter_id' => $inviter->id,
-                'inviter_name' => $inviter->user_name,
-                'user_name' => $request->email,
-                'email' => $request->email,
-                'password' => Hash::make($request->password),
-                'role' => $role,
-                'root_agent_id' => $root_agent_id,
-                'root_agent_name' => $root_agent_name,
-                'invite_code' => $new_invite_code,
-            ]);
-
-            // 当自己是agent时，rootAgent就是自己
-            // 注意必须等user创建成功后，才能拿到自己id
-            if ($role == 'agent') {
-                $user->root_agent_id = $user->id;
-                $user->root_agent_name = $user->user_name;
-                $user->save();
-            }
-
-            return $user;
-        });
+        $user = User::create([
+            'inviter_id' => $inviter->id,
+            'inviter_name' => $inviter->user_name,
+            'user_name' => $request->email,
+            'email' => $request->email,
+            'password' => Hash::make($request->password),
+            'role' => 'default',
+        ]);
 
         return ApiResponse::success([
             'user' => $newUser
@@ -119,7 +73,6 @@ class AuthController extends Controller
 
             $user->two_factor_secret = $secret;
             $user->save();
-
         }
 
         // 以是否成功登录过，作为是否绑定过的依据
