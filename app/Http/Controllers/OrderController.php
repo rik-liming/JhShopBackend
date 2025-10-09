@@ -96,11 +96,6 @@ class OrderController extends Controller
 
     public function getMyBuyerOrders(Request $request)
     {
-        // 验证输入参数
-        $validator = Validator::make($request->all(), [
-            'channel' => 'required|in:bank,alipay,wechat',
-        ]);
-
         // 从中间件获取的用户ID
         $userId = $request->user_id_from_token ?? null;
 
@@ -110,12 +105,13 @@ class OrderController extends Controller
 
         $page = $request->input('page', 1);  // 当前页，默认是第1页
         $pageSize = $request->input('pagesize', 100);  // 每页显示的记录数，默认是10条
-        $channel = $request->input('channel', '');
-
-
+        
         // 构建查询
-        $query = Order::where('buy_user_id', $userId)
-                     ->where('payment_method', $channel);
+        $query = Order::where('buy_user_id', $userId);
+
+        if ($request->channel) {
+            $query->where('payment_method', $request->channel);
+        }
 
         // 获取符合条件的用户总数
         $totalCount = $query->count();
@@ -135,11 +131,6 @@ class OrderController extends Controller
 
     public function getMySellerOrders(Request $request)
     {
-        // 验证输入参数
-        $validator = Validator::make($request->all(), [
-            'channel' => 'required|in:bank,alipay,wechat',
-        ]);
-
         // 从中间件获取的用户ID
         $userId = $request->user_id_from_token ?? null;
 
@@ -149,11 +140,13 @@ class OrderController extends Controller
 
         $page = $request->input('page', 1);  // 当前页，默认是第1页
         $pageSize = $request->input('pagesize', 100);  // 每页显示的记录数，默认是10条
-        $channel = $request->input('channel', '');
 
         // 构建查询
-        $query = Order::where('seller_user_id', $userId)
-                     ->where('payment_method', $channel);
+        $query = Order::where('sell_user_id', $userId);
+
+        if ($request->channel) {
+            $query->where('payment_method', $request->channel);
+        }
 
         // 获取符合条件的用户总数
         $totalCount = $query->count();
@@ -168,6 +161,59 @@ class OrderController extends Controller
             'current_page' => $page,  // 当前页
             'page_size' => $pageSize,  // 每页记录数
             'orders' => $orders,  // 当前页的挂单列表
+        ]);
+    }
+
+    
+    /**
+     * 获取订单详情
+     */
+    public function getOrderDetail(Request $request)
+    {
+        // 验证输入参数
+        $validator = Validator::make($request->all(), [
+            'orderId' => 'required',
+        ]);
+
+        $order = Order::where('id', $request->orderId)->first();
+
+        return ApiResponse::success([
+            'order' => $order,
+        ]);
+    }
+
+    /**
+     * 确认订单
+     */
+    public function orderConfirm(Request $request)
+    {
+        // 验证输入参数
+        $validator = Validator::make($request->all(), [
+            'orderId' => 'required',
+            'role' => 'required|in:buyer,seller',
+        ]);
+
+        // 从中间件获取的用户ID
+        $userId = $request->user_id_from_token ?? null;
+
+        if (!$userId) {
+            return ApiResponse::error(ApiCode::USER_NOT_FOUND);
+        }
+
+        $order = Order::where('id', $request->orderId)->first();
+        if (!$order) {
+            return ApiResponse::error(ApiCode::ORDER_NOT_FOUND);
+        }
+
+        if ($request->role === 'buyer') {
+            $order->status = 1;
+        } else if ($request->role === 'seller') {
+            $order->status = 2;
+        }
+        $order->save();
+
+        return ApiResponse::success([
+            'order' => $order,
         ]);
     }
 }

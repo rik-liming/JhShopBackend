@@ -28,6 +28,8 @@ Route::middleware(['check.api.token'])->group(function () {
     Route::post('/order', [OrderController::class, 'create']);
     Route::get('/order/buyer/my', [OrderController::class, 'getMyBuyerOrders']);
     Route::get('/order/seller/my', [OrderController::class, 'getMySellerOrders']);
+    Route::get('/order/detail', [OrderController::class, 'getOrderDetail']);
+    Route::post('/order/confirm', [OrderController::class, 'orderConfirm']);
 });
 
 Route::post('/admin/login', [AdminController::class, 'login']);
