@@ -19,6 +19,10 @@ class ApiCode
     const USER_ILLEGAL = 20005;
     const USER_BALANCE_NOT_ENOUGH = 20006;
 
+    const ORDER_LISTING_NOT_FOUND = 20100;
+    const ORDER_LISTING_AMOUNT_NOT_ENOUGH = 20101;
+    const ORDER_CREATE_FAIL = 20102;
+
     // admin相关
     const ADMIN_NAME_PASSWORD_WRONG = 30001;
     const ADMIN_NOT_FOUND = 30002;
@@ -40,5 +44,9 @@ class ApiCode
         self::ADMIN_NAME_PASSWORD_WRONG => '用户名或密码错误',
         self::ADMIN_NOT_FOUND => '账号不存在',
         self::ADMIN_2FA_INVALID => '验证码错误',
+
+        self::ORDER_LISTING_NOT_FOUND => '无该挂单信息',
+        self::ORDER_LISTING_AMOUNT_NOT_ENOUGH => '挂单库存不足',
+        self::ORDER_CREATE_FAIL => '订单创建失败',
     ];
 }

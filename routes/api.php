@@ -6,6 +6,8 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\OrderListingController;
+use App\Http\Controllers\ConfigController;
+use App\Http\Controllers\OrderController;
 
 use App\Http\Controllers\AdminController;
 
@@ -17,8 +19,15 @@ Route::post('/logout', [AuthController::class, 'logout']);
 Route::middleware(['check.api.token'])->group(function () {
     Route::get('/user/info', [UserController::class, 'getUserInfo']);
 
-    Route::post('/order-listing', [OrderListingController::class, 'createOrderListing']);
-    Route::get('/order-listing/page', [OrderListingController::class, 'getOrderListingByPage']);
+    Route::post('/order_listing', [OrderListingController::class, 'createOrderListing']);
+    Route::get('/order_listing/page', [OrderListingController::class, 'getOrderListingByPage']);
+    Route::get('/order_listing', [OrderListingController::class, 'getOrderListing']);
+
+    Route::get('/config/info', [ConfigController::class, 'getConfigInfo']);
+
+    Route::post('/order', [OrderController::class, 'create']);
+    Route::get('/order/buyer/my', [OrderController::class, 'getMyBuyerOrders']);
+    Route::get('/order/seller/my', [OrderController::class, 'getMySellerOrders']);
 });
 
 Route::post('/admin/login', [AdminController::class, 'login']);

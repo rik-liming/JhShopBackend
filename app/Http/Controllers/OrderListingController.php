@@ -94,7 +94,7 @@ class OrderListingController extends Controller
         $totalCount = $query->count();
 
         // 分页
-        $users = $query->skip(($page - 1) * $pageSize)  // 计算分页的偏移量
+        $orderListings = $query->skip(($page - 1) * $pageSize)  // 计算分页的偏移量
                     ->take($pageSize)  // 每页获取指定数量的用户
                     ->get();
 
@@ -102,7 +102,23 @@ class OrderListingController extends Controller
             'total' => $totalCount,  // 总记录数
             'current_page' => $page,  // 当前页
             'page_size' => $pageSize,  // 每页记录数
-            'orderListings' => $users,  // 当前页的挂单列表
+            'orderListings' => $orderListings,  // 当前页的挂单列表
+        ]);
+    }
+
+    /**
+     * 获取当前挂单信息
+     */
+    public function getOrderListing(Request $request)
+    {
+        $orderListing = OrderListing::find($request->id);
+
+        if (!$orderListing) {
+            return ApiResponse::error(ApiCode::ORDER_LISTING_NOT_FOUND);
+        }
+
+        return ApiResponse::success([
+            'orderListing' => $orderListing,
         ]);
     }
 }

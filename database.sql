@@ -275,6 +275,7 @@ CREATE TABLE `jh_user_payment_method` (
   `qr_code` varchar(512) DEFAULT NULL COMMENT '二维码图片链接（仅适用于支付宝、微信）',
   `sort_order` int(10) NOT NULL DEFAULT 0 COMMENT '排序',
   `default_payment` tinyint(1) NOT NULL DEFAULT 0 COMMENT '是否默认支付方式',
+  `status` tinyint(1) NOT NULL DEFAULT 1 COMMENT '状态：0禁用，1启用, -1删除',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`),
@@ -307,17 +308,33 @@ CREATE TABLE `jh_user_order_listing` (
 DROP TABLE IF EXISTS `jh_user_orders`;
 CREATE TABLE `jh_user_orders` (
   `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '订单ID',
-  `user_id` int(10) UNSIGNED NOT NULL COMMENT '用户ID（外键关联 jh_user 表）',
   `order_listing_id` int(10) UNSIGNED NOT NULL COMMENT '挂单ID（外键关联 jh_user_order_listing 表）',
   `amount` decimal(15,2) UNSIGNED NOT NULL COMMENT '购买数量',
   `payment_method` enum('bank', 'alipay', 'wechat') NOT NULL COMMENT '支付方式',
-  `status` tinyint(1) NOT NULL DEFAULT 1 COMMENT '订单状态：0 买家未支付; 1 已支付待卖家确认; 2 卖家已确认；3 完成; -1 超时卖家未确认;',
+  `buy_user_id` int(10) UNSIGNED NOT NULL COMMENT '购买用户ID（外键关联 jh_user 表）',
+  `buy_account_name` varchar(255) NOT NULL COMMENT '购买账户名/持卡人',
+  `buy_account_number` varchar(255) NOT NULL COMMENT '购买账户号码/卡号',
+  `buy_bank_name` varchar(255) DEFAULT NULL COMMENT '购买银行名',
+  `buy_issue_bank_name` varchar(255) DEFAULT NULL COMMENT '购买开户行名',
+  `sell_user_id` int(10) UNSIGNED NOT NULL COMMENT '售卖用户ID（外键关联 jh_user 表）',
+  `sell_account_name` varchar(255) NOT NULL COMMENT '售卖账户名/持卡人',
+  `sell_account_number` varchar(255) NOT NULL COMMENT '售卖账户号码/卡号',
+  `sell_bank_name` varchar(255) DEFAULT NULL COMMENT '售卖银行名',
+  `sell_issue_bank_name` varchar(255) DEFAULT NULL COMMENT '售卖开户行名',
+  `sell_qr_code` varchar(512) DEFAULT NULL COMMENT '二维码图片链接（仅适用于支付宝、微信）',
+  `exchange_rate` decimal(15,2) UNSIGNED NOT NULL COMMENT '兑换比率（币价）',
+  `total_price` decimal(15,2) UNSIGNED NOT NULL COMMENT '购买总金额',
+  `total_cny_price` decimal(15,2) UNSIGNED NOT NULL COMMENT '购买总金额（人民币）',
+  `status` tinyint(1) NOT NULL DEFAULT 1 COMMENT '订单状态：0 买家未支付; 1 已支付待卖家确认; 2 卖家已确认；3 完成; -1 超时卖家未确认; ',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '订单创建时间',
   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '订单更新时间',
   PRIMARY KEY (`id`),
-  CONSTRAINT `fk_user_orders_user_id` FOREIGN KEY (`user_id`) REFERENCES `jh_user`(`id`),
-  CONSTRAINT `fk_user_orders_order_listing_id` FOREIGN KEY (`order_listing_id`) REFERENCES `jh_user_order_listing`(`id`)
+  -- 外键约束
+  CONSTRAINT `fk_user_orders_order_listing_id` FOREIGN KEY (`order_listing_id`) REFERENCES `jh_user_order_listing`(`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_user_orders_buy_user_id` FOREIGN KEY (`buy_user_id`) REFERENCES `jh_user`(`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_user_orders_sell_user_id` FOREIGN KEY (`sell_user_id`) REFERENCES `jh_user`(`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='用户订单表';
+
 
 
 -- ----------------------------
@@ -422,3 +439,11 @@ CREATE TABLE `jh_platform_config` (
   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='平台配置表';
+
+-- ----------------------------
+-- Records of jh_platform_config
+-- ----------------------------
+INSERT INTO `jh_platform_config` 
+(`id`, `payment_address`, `payment_qr_code`, `transfer_fee`, `withdrawl_fee`, `exchange_rate_alipay`, `exchange_rate_wechat`, `exchange_rate_bank`) 
+VALUES
+(1, 'jjusfafxsdfsjeexxseeed', '', 2.00, 2.00, 7.24, 7.25, 7.26)
