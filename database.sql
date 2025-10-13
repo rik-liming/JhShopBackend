@@ -343,14 +343,17 @@ CREATE TABLE `jh_user_orders` (
 DROP TABLE IF EXISTS `jh_user_recharge`;
 CREATE TABLE `jh_user_recharge` (
   `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '充值记录ID',
-  `user_id` int(10) UNSIGNED NOT NULL COMMENT '用户ID（外键，关联用户表）',
-  `amount` decimal(15,2) NOT NULL COMMENT '充值金额',
-  `recharge_address` varchar(512) NOT NULL COMMENT '充值地址(USDT-TRC20)',
   `transaction_id` varchar(255) NOT NULL COMMENT '支付交易号',
+  `user_id` int(10) UNSIGNED NOT NULL COMMENT '用户ID（外键，关联用户表）',
+  `user_name` varchar(32) NOT NULL DEFAULT '' COMMENT '用户名',
+  `amount` decimal(15,2) NOT NULL COMMENT '充值金额',
+  `exchange_rate` decimal(15,2) NOT NULL COMMENT '兑换比率',
+  `cny_amount` decimal(15,2) NOT NULL COMMENT '等值的CNY充值金额',
+  `recharge_address` varchar(512) NOT NULL COMMENT '充值地址(USDT-TRC20)',
+  `recharge_images` text NOT NULL COMMENT '充值截图',
   `status` tinyint(1) NOT NULL DEFAULT 1 COMMENT '交易状态：0 待确认; -1 已驳回; 1 已通过',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '充值请求时间',
   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '状态更新时间',
-  `description` text DEFAULT NULL COMMENT '备注（如支付相关备注）',
   PRIMARY KEY (`id`),
   CONSTRAINT `fk_user_recharge_user_id` FOREIGN KEY (`user_id`) REFERENCES `jh_user`(`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='用户充值记录表';
@@ -362,18 +365,19 @@ CREATE TABLE `jh_user_recharge` (
 DROP TABLE IF EXISTS `jh_user_transfer`;
 CREATE TABLE `jh_user_transfer` (
   `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '转账记录ID',
+  `transaction_id` varchar(255) NOT NULL COMMENT '支付交易号',
   `sender_user_id` int(10) UNSIGNED NOT NULL COMMENT '发送者用户ID（外键，关联用户表）',
   `receiver_user_id` int(10) UNSIGNED NOT NULL COMMENT '接收者用户ID（外键，关联用户表）',
   `sender_user_name` varchar(32) NOT NULL COMMENT '发送者用户名',
   `receiver_user_name` varchar(32) NOT NULL COMMENT '接收者用户名',
   `amount` decimal(15,2) NOT NULL COMMENT '转账金额',
-  `actual_amount` decimal(15,2) NOT NULL COMMENT '实际转账金额',
+  `exchange_rate` decimal(15,2) NOT NULL COMMENT '兑换比率',
+  `cny_amount` decimal(15,2) NOT NULL COMMENT '等值的CNY转账金额',
   `fee` decimal(15,2) NOT NULL COMMENT '转账手续费',
-  `transaction_id` varchar(255) NOT NULL COMMENT '支付交易号',
+  `actual_amount` decimal(15,2) NOT NULL COMMENT '实际扣除金额（转账金额+手续费）',
   `status` tinyint(1) NOT NULL DEFAULT 1 COMMENT '交易状态：0 待确认; -1 已驳回; 1 已通过',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '转账请求时间',
   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '转账状态更新时间',
-  `description` text DEFAULT NULL COMMENT '备注（例如转账附言）',
   PRIMARY KEY (`id`),
   CONSTRAINT `fk_user_transfer_sender_user_id` FOREIGN KEY (`sender_user_id`) REFERENCES `jh_user`(`id`),
   CONSTRAINT `fk_user_transfer_receiver_user_id` FOREIGN KEY (`receiver_user_id`) REFERENCES `jh_user`(`id`)
@@ -386,15 +390,18 @@ CREATE TABLE `jh_user_transfer` (
 DROP TABLE IF EXISTS `jh_user_withdrawal`;
 CREATE TABLE `jh_user_withdrawal` (
   `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '提现记录ID',
-  `user_id` int(10) UNSIGNED NOT NULL COMMENT '用户ID（外键，关联用户表）',
-  `amount` decimal(15,2) NOT NULL COMMENT '提现金额',
-  `actual_amount` decimal(15,2) NOT NULL COMMENT '实际提现金额',
-  `fee` decimal(15,2) NOT NULL COMMENT '提现手续费',
   `transaction_id` varchar(255) DEFAULT NULL COMMENT '提现交易号（用于支付平台跟踪）',
+  `user_id` int(10) UNSIGNED NOT NULL COMMENT '用户ID（外键，关联用户表）',
+  `user_name` varchar(32) NOT NULL DEFAULT '' COMMENT '用户名',
+  `amount` decimal(15,2) NOT NULL COMMENT '提现金额',
+  `exchange_rate` decimal(15,2) NOT NULL COMMENT '兑换比率',
+  `cny_amount` decimal(15,2) NOT NULL COMMENT '等值的CNY提现金额',
+  `fee` decimal(15,2) NOT NULL COMMENT '提现手续费',
+  `actual_amount` decimal(15,2) NOT NULL COMMENT '实际扣除金额（提现金额+手续费）',
+  `withdraw_address` varchar(512) NOT NULL COMMENT '提现地址(USDT-TRC20)',
   `status` tinyint(1) NOT NULL DEFAULT 1 COMMENT '交易状态：0 待确认; -1 已驳回; 1 已通过',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '提现申请时间',
   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '状态更新时间',
-  `description` text DEFAULT NULL COMMENT '备注（如提现相关备注）',
   PRIMARY KEY (`id`),
   CONSTRAINT `fk_user_withdrawal_user_id` FOREIGN KEY (`user_id`) REFERENCES `jh_user`(`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='用户提现记录表';
@@ -407,15 +414,21 @@ DROP TABLE IF EXISTS `jh_user_financial_record`;
 
 CREATE TABLE `jh_user_financial_record` (
   `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '财务变动记录ID',
+  `transaction_id` varchar(255) DEFAULT NULL COMMENT '交易ID（例如，支付流水号、转账流水号）',
   `user_id` int(10) UNSIGNED NOT NULL COMMENT '用户ID（外键关联 jh_user 表）',
   `amount` decimal(15,2) NOT NULL COMMENT '变动金额（可以是负值或正值）',
+  `exchange_rate` decimal(15,2) NOT NULL COMMENT '兑换比率',
+  `cny_amount` decimal(15,2) NOT NULL COMMENT '等值的CNY提现金额',
+  `fee` decimal(15,2) NOT NULL COMMENT '手续费',
+  `actual_amount` decimal(15,2) NOT NULL COMMENT '实际变动金额（可以是负值或正值，加上了手续费）',
+  `balance_before` decimal(15,2) NOT NULL COMMENT '变动前的账户余额',
   `balance_after` decimal(15,2) NOT NULL COMMENT '变动后的账户余额',
-  `transaction_type` enum('income', 'expense', 'recharge', 'transfer', 'order_income', 'order_expense') NOT NULL COMMENT '变动类型：income（收入）、expense（支出）、recharge（充值）、transfer（转账）、order_income（订单收入）、order_expense（订单支出）',
+  `transaction_type` enum('recharge', 'transfer', 'withdraw', 'order_expense') NOT NULL COMMENT '变动类型：recharge（充值）、transfer（转账）、withdraw（提现）、order（订单）',
   `order_id` int(10) UNSIGNED DEFAULT NULL COMMENT '订单ID（外键关联 jh_user_orders 表），如果是订单相关的财务变动，存储订单ID',
   `payment_method` enum('bank', 'alipay', 'wechat') DEFAULT NULL COMMENT '支付方式（仅用于订单相关的变动）',
-  `transaction_id` varchar(255) DEFAULT NULL COMMENT '交易ID（例如，支付流水号、转账流水号）',
   `description` text DEFAULT NULL COMMENT '变动描述（可选）',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '变动时间',
+  `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '状态更新时间',
   PRIMARY KEY (`id`),
   CONSTRAINT `fk_user_financial_record_user_id` FOREIGN KEY (`user_id`) REFERENCES `jh_user`(`id`),
   CONSTRAINT `fk_user_financial_record_order_id` FOREIGN KEY (`order_id`) REFERENCES `jh_user_orders`(`id`)

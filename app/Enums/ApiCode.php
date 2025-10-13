@@ -24,6 +24,10 @@ class ApiCode
     const ORDER_CREATE_FAIL = 20102;
     const ORDER_NOT_FOUND = 20103;
 
+    const TRANSFER_NOT_FOUND = 20200;
+    const RECHARGE_NOT_FOUND = 20201;
+    const WITHDRAW_NOT_FOUND = 20202;
+
     // admin相关
     const ADMIN_NAME_PASSWORD_WRONG = 30001;
     const ADMIN_NOT_FOUND = 30002;
