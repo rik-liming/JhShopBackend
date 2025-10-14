@@ -12,10 +12,11 @@ class Order extends Authenticatable
 {
     use HasApiTokens, Notifiable;
 
-    protected $table = 'jh_user_orders';
+    protected $table = 'jh_user_order';
 
     protected $fillable = [
         'order_listing_id',
+        'display_order_id',
         'amount',
         'payment_method',
         'buy_user_id',

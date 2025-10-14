@@ -23,17 +23,17 @@ class AuthController extends Controller
         $request->validate([
             'email' => 'required|email|unique:jh_user,email',
             'password' => 'required|min:6',
-            'inviteCode' => 'required',
+            'invite_code' => 'required',
         ], [
             'email.required' => '邮箱不能为空',
             'email.email' => '邮箱格式不正确',
             'email.unique' => '邮箱已经被注册',
             'password.required' => '密码不能为空',
             'password.min' => '密码长度不能少于6位',
-            'inviteCode.required' => '邀请码不能为空',
+            'invite_code.required' => '邀请码不能为空',
         ]);
 
-        $inviter = User::where('invite_code', $request->inviteCode)->first();
+        $inviter = User::where('invite_code', $request->invite_code)->first();
         if (!$inviter) {
             throw new ApiException(ApiCode::INVALID_INVITE_CODE);
         }
@@ -97,13 +97,13 @@ class AuthController extends Controller
                 $user->two_factor_secret,
             );
             return ApiResponse::success([
-                'qrCodeUrl' => $qrCodeUrl
+                'qr_code_url' => $qrCodeUrl
             ]);
         }
         
         // 返回需要输入OTP
         return ApiResponse::success([
-            'needOtp' => true,
+            'need_otp' => true,
         ]);
     }
 

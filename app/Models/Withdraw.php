@@ -7,6 +7,7 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Carbon\Carbon;
+use App\Models\FinancialRecord;
 
 class Withdraw extends Authenticatable
 {
@@ -15,15 +16,16 @@ class Withdraw extends Authenticatable
     protected $table = 'jh_user_withdrawal';
 
     protected $fillable = [
-        'transaction_id',
         'user_id',
         'user_name',
         'amount',
         'exchange_rate',
         'cny_amount',
-        'actual_amount',
         'fee',
+        'actual_amount',
         'withdraw_address',
+        'balance_before',
+        'balance_after',
         'status',
     ];
 

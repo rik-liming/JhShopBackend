@@ -56,7 +56,6 @@ class TransferController extends Controller
                 'cny_amount' => 2320,
                 'actual_amount' => $amount - 2.00,
                 'fee' => 2.00,
-                'status' => 0,
                 'balance_before' => 0.00,
                 'balance_after' => 0.00,
                 'transaction_type'=> 'transfer', 
@@ -75,7 +74,6 @@ class TransferController extends Controller
      */
     public function getTransferByTranaction(Request $request)
     {
-        // 打印 SQL 查询，检查查询是否正确
         $transfer = Transfer::with('transaction')
             ->where('transaction_id', $request->transaction_id)
             ->first();

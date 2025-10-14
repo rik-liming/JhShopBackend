@@ -4,6 +4,7 @@ SET FOREIGN_KEY_CHECKS = 0;
 -- ----------------------------
 -- Table structure for jh_admin_role
 -- ----------------------------
+DROP TABLE IF EXISTS `jh_admin_role`;
 CREATE TABLE `jh_admin_role` (
   `role` varchar(50) NOT NULL COMMENT '角色唯一标识',
   `name` varchar(50) NOT NULL COMMENT '角色名',
@@ -26,6 +27,7 @@ INSERT INTO `jh_admin_role` (`role`, `name`, `remark`, `status`) VALUES
 -- ----------------------------
 -- Table structure for jh_admin_privilege_rule
 -- ----------------------------
+DROP TABLE IF EXISTS `jh_admin_privilege_rule`;
 CREATE TABLE `jh_admin_privilege_rule` (
   `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT,
   `pid` int(10) UNSIGNED NOT NULL DEFAULT 0 COMMENT '父ID，0为根节点',
@@ -54,6 +56,7 @@ INSERT INTO `jh_admin_privilege_rule` (`id`, `pid`, `router_key`, `type`, `name`
 -- ----------------------------
 -- Table structure for jh_admin_role_rule
 -- ----------------------------
+DROP TABLE IF EXISTS `jh_admin_role_rule`;
 CREATE TABLE `jh_admin_role_rule` (
   `role` varchar(50) NOT NULL,
   `rule_id` int(10) UNSIGNED NOT NULL,
@@ -114,6 +117,7 @@ VALUES
 -- ----------------------------
 -- Table structure for jh_user_role
 -- ----------------------------
+DROP TABLE IF EXISTS `jh_user_role`;
 CREATE TABLE `jh_user_role` (
   `role` varchar(50) NOT NULL COMMENT '角色唯一标识',
   `name` varchar(50) NOT NULL COMMENT '角色名',
@@ -140,6 +144,7 @@ INSERT INTO `jh_user_role` (`role`, `name`, `remark`, `status`) VALUES
 -- ----------------------------
 -- Table structure for jh_user_privilege_rule
 -- ----------------------------
+DROP TABLE IF EXISTS `jh_user_privilege_rule`;
 CREATE TABLE `jh_user_privilege_rule` (
   `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT,
   `pid` int(10) UNSIGNED NOT NULL DEFAULT 0 COMMENT '父ID，0为根节点',
@@ -169,6 +174,7 @@ INSERT INTO `jh_user_privilege_rule` (`id`, `pid`, `router_key`, `type`, `name`,
 -- ----------------------------
 -- Table structure for jh_user_role_rule
 -- ----------------------------
+DROP TABLE IF EXISTS `jh_user_role_rule`;
 CREATE TABLE `jh_user_role_rule` (
   `role` varchar(50) NOT NULL,
   `rule_id` int(10) UNSIGNED NOT NULL,
@@ -267,7 +273,7 @@ DROP TABLE IF EXISTS `jh_user_payment_method`;
 CREATE TABLE `jh_user_payment_method` (
   `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '支付方式ID',
   `user_id` int(10) UNSIGNED NOT NULL COMMENT '用户ID（外键关联 jh_user 表）',
-  `pay_type` enum('bank', 'alipay', 'wechat') NOT NULL COMMENT '支付方式类型：银行卡、支付宝、Paypal',
+  `payment_method` enum('bank', 'alipay', 'wechat') NOT NULL COMMENT '支付方式类型：银行卡、支付宝、Paypal',
   `account_name` varchar(255) NOT NULL COMMENT '账户名/持卡人',
   `account_number` varchar(255) NOT NULL COMMENT '账户号码/卡号',
   `bank_name` varchar(255) DEFAULT NULL COMMENT '银行名',
@@ -303,12 +309,13 @@ CREATE TABLE `jh_user_order_listing` (
 
 
 -- ----------------------------
--- Table structure for jh_user_orders
+-- Table structure for jh_user_order
 -- ----------------------------
-DROP TABLE IF EXISTS `jh_user_orders`;
-CREATE TABLE `jh_user_orders` (
+DROP TABLE IF EXISTS `jh_user_order`;
+CREATE TABLE `jh_user_order` (
   `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '订单ID',
   `order_listing_id` int(10) UNSIGNED NOT NULL COMMENT '挂单ID（外键关联 jh_user_order_listing 表）',
+  `display_order_id` varchar(255) NOT NULL COMMENT '用于展示的订单号（比如20250101_0001）',
   `amount` decimal(15,2) UNSIGNED NOT NULL COMMENT '购买数量',
   `payment_method` enum('bank', 'alipay', 'wechat') NOT NULL COMMENT '支付方式',
   `buy_user_id` int(10) UNSIGNED NOT NULL COMMENT '购买用户ID（外键关联 jh_user 表）',
@@ -325,7 +332,7 @@ CREATE TABLE `jh_user_orders` (
   `exchange_rate` decimal(15,2) UNSIGNED NOT NULL COMMENT '兑换比率（币价）',
   `total_price` decimal(15,2) UNSIGNED NOT NULL COMMENT '购买总金额',
   `total_cny_price` decimal(15,2) UNSIGNED NOT NULL COMMENT '购买总金额（人民币）',
-  `status` tinyint(1) NOT NULL DEFAULT 1 COMMENT '订单状态：0 买家未支付; 1 已支付待卖家确认; 2 卖家已确认；3 完成; -1 超时卖家未确认; ',
+  `status` tinyint(1) NOT NULL DEFAULT 1 COMMENT '订单状态：0 买家未支付; 1 已支付待卖家确认; 2 卖家已确认；-1 超时卖家未确认;',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '订单创建时间',
   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '订单更新时间',
   PRIMARY KEY (`id`),
@@ -336,14 +343,12 @@ CREATE TABLE `jh_user_orders` (
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='用户订单表';
 
 
-
 -- ----------------------------
 -- Table structure for jh_user_recharge
 -- ----------------------------
 DROP TABLE IF EXISTS `jh_user_recharge`;
 CREATE TABLE `jh_user_recharge` (
   `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '充值记录ID',
-  `transaction_id` varchar(255) NOT NULL COMMENT '支付交易号',
   `user_id` int(10) UNSIGNED NOT NULL COMMENT '用户ID（外键，关联用户表）',
   `user_name` varchar(32) NOT NULL DEFAULT '' COMMENT '用户名',
   `amount` decimal(15,2) NOT NULL COMMENT '充值金额',
@@ -352,6 +357,8 @@ CREATE TABLE `jh_user_recharge` (
   `recharge_address` varchar(512) NOT NULL COMMENT '充值地址(USDT-TRC20)',
   `recharge_images` text NOT NULL COMMENT '充值截图',
   `status` tinyint(1) NOT NULL DEFAULT 1 COMMENT '交易状态：0 待确认; -1 已驳回; 1 已通过',
+  `balance_before` decimal(15,2) NOT NULL COMMENT '变动前的账户余额',
+  `balance_after` decimal(15,2) NOT NULL COMMENT '变动后的账户余额',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '充值请求时间',
   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '状态更新时间',
   PRIMARY KEY (`id`),
@@ -365,7 +372,6 @@ CREATE TABLE `jh_user_recharge` (
 DROP TABLE IF EXISTS `jh_user_transfer`;
 CREATE TABLE `jh_user_transfer` (
   `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '转账记录ID',
-  `transaction_id` varchar(255) NOT NULL COMMENT '支付交易号',
   `sender_user_id` int(10) UNSIGNED NOT NULL COMMENT '发送者用户ID（外键，关联用户表）',
   `receiver_user_id` int(10) UNSIGNED NOT NULL COMMENT '接收者用户ID（外键，关联用户表）',
   `sender_user_name` varchar(32) NOT NULL COMMENT '发送者用户名',
@@ -376,6 +382,10 @@ CREATE TABLE `jh_user_transfer` (
   `fee` decimal(15,2) NOT NULL COMMENT '转账手续费',
   `actual_amount` decimal(15,2) NOT NULL COMMENT '实际扣除金额（转账金额+手续费）',
   `status` tinyint(1) NOT NULL DEFAULT 1 COMMENT '交易状态：0 待确认; -1 已驳回; 1 已通过',
+  `sender_balance_before` decimal(15,2) NOT NULL COMMENT '变动前的发送者账户余额',
+  `sender_balance_after` decimal(15,2) NOT NULL COMMENT '变动后的发送者账户余额',
+  `receiver_balance_before` decimal(15,2) NOT NULL COMMENT '变动前的接收者账户余额',
+  `receiver_balance_after` decimal(15,2) NOT NULL COMMENT '变动后的接收者账户余额',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '转账请求时间',
   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '转账状态更新时间',
   PRIMARY KEY (`id`),
@@ -390,7 +400,6 @@ CREATE TABLE `jh_user_transfer` (
 DROP TABLE IF EXISTS `jh_user_withdrawal`;
 CREATE TABLE `jh_user_withdrawal` (
   `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '提现记录ID',
-  `transaction_id` varchar(255) DEFAULT NULL COMMENT '提现交易号（用于支付平台跟踪）',
   `user_id` int(10) UNSIGNED NOT NULL COMMENT '用户ID（外键，关联用户表）',
   `user_name` varchar(32) NOT NULL DEFAULT '' COMMENT '用户名',
   `amount` decimal(15,2) NOT NULL COMMENT '提现金额',
@@ -400,6 +409,8 @@ CREATE TABLE `jh_user_withdrawal` (
   `actual_amount` decimal(15,2) NOT NULL COMMENT '实际扣除金额（提现金额+手续费）',
   `withdraw_address` varchar(512) NOT NULL COMMENT '提现地址(USDT-TRC20)',
   `status` tinyint(1) NOT NULL DEFAULT 1 COMMENT '交易状态：0 待确认; -1 已驳回; 1 已通过',
+  `balance_before` decimal(15,2) NOT NULL COMMENT '变动前的账户余额',
+  `balance_after` decimal(15,2) NOT NULL COMMENT '变动后的账户余额',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '提现申请时间',
   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '状态更新时间',
   PRIMARY KEY (`id`),
@@ -411,7 +422,6 @@ CREATE TABLE `jh_user_withdrawal` (
 -- Table structure for jh_user_financial_record
 -- ----------------------------
 DROP TABLE IF EXISTS `jh_user_financial_record`;
-
 CREATE TABLE `jh_user_financial_record` (
   `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '财务变动记录ID',
   `transaction_id` varchar(255) DEFAULT NULL COMMENT '交易ID（例如，支付流水号、转账流水号）',
@@ -421,17 +431,13 @@ CREATE TABLE `jh_user_financial_record` (
   `cny_amount` decimal(15,2) NOT NULL COMMENT '等值的CNY提现金额',
   `fee` decimal(15,2) NOT NULL COMMENT '手续费',
   `actual_amount` decimal(15,2) NOT NULL COMMENT '实际变动金额（可以是负值或正值，加上了手续费）',
-  `balance_before` decimal(15,2) NOT NULL COMMENT '变动前的账户余额',
-  `balance_after` decimal(15,2) NOT NULL COMMENT '变动后的账户余额',
-  `transaction_type` enum('recharge', 'transfer', 'withdraw', 'order_expense') NOT NULL COMMENT '变动类型：recharge（充值）、transfer（转账）、withdraw（提现）、order（订单）',
-  `order_id` int(10) UNSIGNED DEFAULT NULL COMMENT '订单ID（外键关联 jh_user_orders 表），如果是订单相关的财务变动，存储订单ID',
-  `payment_method` enum('bank', 'alipay', 'wechat') DEFAULT NULL COMMENT '支付方式（仅用于订单相关的变动）',
+  `transaction_type` enum('recharge', 'transfer_send', 'transfer_receive', 'withdraw', 'order_buy', 'order_sell') NOT NULL COMMENT '变动类型：recharge（充值）、transfer_send（转账-转出）、transfer_receive（转账-转入）、withdraw（提现）、order（订单）',
+  `reference_id` int(10) UNSIGNED DEFAULT NULL COMMENT '关联ID，比如转账的记录ID，订单ID',
   `description` text DEFAULT NULL COMMENT '变动描述（可选）',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '变动时间',
   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '状态更新时间',
   PRIMARY KEY (`id`),
-  CONSTRAINT `fk_user_financial_record_user_id` FOREIGN KEY (`user_id`) REFERENCES `jh_user`(`id`),
-  CONSTRAINT `fk_user_financial_record_order_id` FOREIGN KEY (`order_id`) REFERENCES `jh_user_orders`(`id`)
+  CONSTRAINT `fk_user_financial_record_user_id` FOREIGN KEY (`user_id`) REFERENCES `jh_user`(`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='用户财务变动记录表';
 
 

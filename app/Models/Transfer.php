@@ -16,7 +16,6 @@ class Transfer extends Authenticatable
     protected $table = 'jh_user_transfer';
 
     protected $fillable = [
-        'transaction_id',
         'sender_user_id',
         'sender_user_name',
         'receiver_user_id',
@@ -26,6 +25,10 @@ class Transfer extends Authenticatable
         'cny_amount',
         'fee',      
         'actual_amount',
+        'sender_balance_before',
+        'sender_balance_after',
+        'receiver_balance_before',
+        'receiver_balance_after',
         'status',
     ];
 
@@ -39,11 +42,6 @@ class Transfer extends Authenticatable
         'created_at',
         'updated_at',
     ];
-
-    public function transaction()
-    {
-        return $this->belongsTo(FinancialRecord::class, 'transaction_id', 'transaction_id');
-    }
 
     /**
      * 全局序列化时间格式

@@ -11,6 +11,7 @@ use App\Http\Controllers\OrderController;
 use App\Http\Controllers\RechargeController;
 use App\Http\Controllers\TransferController;
 use App\Http\Controllers\WithdrawController;
+use App\Http\Controllers\FinancialRecordController;
 
 use App\Http\Controllers\AdminController;
 
@@ -33,6 +34,8 @@ Route::middleware(['check.api.token'])->group(function () {
     Route::get('/order/seller/my', [OrderController::class, 'getMySellerOrders']);
     Route::get('/order/detail', [OrderController::class, 'getOrderDetail']);
     Route::post('/order/confirm', [OrderController::class, 'orderConfirm']);
+    Route::get('/order/report/my', [OrderController::class, 'getMyOrderReport']);
+    Route::get('/order/report/group', [OrderController::class, 'getGroupOrderReport']);
 
     Route::post('/recharge', [RechargeController::class, 'createRecharge']);
     Route::get('/recharge/detail', [RechargeController::class, 'getRechargeByTranaction']);
@@ -40,6 +43,8 @@ Route::middleware(['check.api.token'])->group(function () {
     Route::get('/transfer/detail', [TransferController::class, 'getTransferByTranaction']);
     Route::post('/withdraw', [WithdrawController::class, 'createWithdraw']);
     Route::get('/withdraw/detail', [WithdrawController::class, 'getWithdrawByTranaction']);
+
+    Route::get('/financial_record/my', [FinancialRecordController::class, 'getMyRecords']);
 });
 
 Route::post('/admin/login', [AdminController::class, 'login']);

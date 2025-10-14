@@ -12,6 +12,8 @@ use App\Models\OrderListing;
 use App\Models\Order;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Carbon\Carbon;
+use App\Models\FinancialRecord;
 
 class OrderController extends Controller
 {
@@ -54,6 +56,7 @@ class OrderController extends Controller
             // 创建订单记录
             $order = new Order([
                 'order_listing_id' => $orderListing->id,
+                ''
                 'amount' => $request->amount,
                 'payment_method' => $request->payment_method,
                 'buy_user_id' => $request->buy_user_id,
@@ -210,10 +213,163 @@ class OrderController extends Controller
         } else if ($request->role === 'seller') {
             $order->status = 2;
         }
-        $order->save();
+
+        $this->generateTransaction($order, $request->role);
 
         return ApiResponse::success([
             'order' => $order,
+        ]);
+    }
+
+    protected function generateTransaction($order, $role) {
+
+        $date = Carbon::now()->format('YmdHis'); // 获取当前日期和时间，格式：202506021245
+        $randomNumber = str_pad(rand(0, 9999), 4, '0', STR_PAD_LEFT); // 生成 4 位随机数，填充 0
+        $transaction_id = $date . $randomNumber;
+
+        DB::transaction(function() use ($order, $role, $transaction_id) {
+            $order->save();
+
+            if ($role === 'buyer') {
+                $userId = $order->buy_user_id;
+            } else {
+                $userId = $order->sell_user_id;
+            }
+
+            FinancialRecord::create([
+                'transaction_id' => $transaction_id,
+                'user_id' => $userId,
+                'amount' => $order->total_price,
+                'exchange_rate' => $order->exchange_rate,
+                'cny_amount' => $order->total_cny_price,
+                'fee' => 0.00,
+                'actual_amount' => $order->total_price,
+                'balance_before' => 0.00,
+                'balance_after' => 0.00,
+                'transaction_type'=> 'order',
+                'order_id'=> $order->id,
+                'payment_method'=> $order->payment_method,
+            ]);
+        });
+    }
+
+    public function getMyOrderReport(Request $request)
+    {
+        // 从中间件获取的用户ID
+        $userId = $request->user_id_from_token ?? null;
+
+        if (!$userId) {
+            return ApiResponse::error(ApiCode::USER_NOT_FOUND);
+        }
+
+        // 获取前端传入的开始时间和结束时间
+        $startTime = $request->input('startTime', '');
+        $endTime = $request->input('endTime', '');
+
+        // 如果没有传入时间，则默认是今天
+        if (empty($startTime) && empty($endTime)) {
+            $startDate = Carbon::today()->startOfDay();  // 今天的 00:00:00
+            $endDate = Carbon::today()->endOfDay();  // 今天的 23:59:59
+        } else {
+            // 如果传入了时间，则按照时间处理
+            $startDate = $startTime ? Carbon::createFromFormat('Y-m-d', $startTime)->startOfDay() : null;
+            $endDate = $endTime ? Carbon::createFromFormat('Y-m-d', $endTime)->endOfDay() : null;
+
+            // 如果没有传入结束时间，默认为当前时间
+            if (!$endDate && $startDate) {
+                $endDate = Carbon::now()->endOfDay();
+            }
+        }
+
+        // 构建查询
+        $query = Order::where('sell_user_id', $userId)
+                    ->where('status', 2);
+
+        // 如果传入了时间范围，则加入时间条件
+        if ($startDate) {
+            $query->where('created_at', '>=', $startDate);
+        }
+
+        if ($endDate) {
+            $query->where('created_at', '<=', $endDate);
+        }
+
+        // 获取符合条件的订单总数
+        $totalCount = $query->count();
+
+        $orders = $query->get();
+
+        // 获取订单金额总数
+        $totalAmount = $query->sum('amount');
+
+        return ApiResponse::success([
+            'totalCount' => $totalCount,  // 总订单数
+            'totalAmount' => $totalAmount,  // 总金额
+            'orders' => $orders, // 所有订单
+        ]);
+    }
+
+    public function getGroupOrderReport(Request $request)
+    {
+        // 从中间件获取的用户ID
+        $userId = $request->user_id_from_token ?? null;
+
+        if (!$userId) {
+            return ApiResponse::error(ApiCode::USER_NOT_FOUND);
+        }
+
+        // 获取前端传入的开始时间和结束时间
+        $startTime = $request->input('startTime', '');
+        $endTime = $request->input('endTime', '');
+
+        // 如果没有传入时间，则默认是今天
+        if (empty($startTime) && empty($endTime)) {
+            $startDate = Carbon::today()->startOfDay();  // 今天的 00:00:00
+            $endDate = Carbon::today()->endOfDay();  // 今天的 23:59:59
+        } else {
+            // 如果传入了时间，则按照时间处理
+            $startDate = $startTime ? Carbon::createFromFormat('Y-m-d', $startTime)->startOfDay() : null;
+            $endDate = $endTime ? Carbon::createFromFormat('Y-m-d', $endTime)->endOfDay() : null;
+
+            // 如果没有传入结束时间，默认为当前时间
+            if (!$endDate && $startDate) {
+                $endDate = Carbon::now()->endOfDay();
+            }
+        }
+
+        // 获取当前用户的 rootAgentId 对应的所有用户 userIds
+        $userIds = User::where('root_agent_id', $userId)->pluck('id')->toArray();
+
+        if (empty($userIds)) {
+            return ApiResponse::error(ApiCode::USER_NOT_FOUND);
+        }
+
+        // 构建查询
+        $query = Order::whereIn('sell_user_id', $userIds)
+                    ->where('status', 2);
+
+        // 如果传入了时间范围，则加入时间条件
+        if ($startDate) {
+            $query->where('created_at', '>=', $startDate);
+        }
+
+        if ($endDate) {
+            $query->where('created_at', '<=', $endDate);
+        }
+
+        // 获取符合条件的订单总数
+        $totalCount = $query->count();
+
+        // 获取所有符合条件的订单
+        $orders = $query->get();
+
+        // 获取订单金额总数
+        $totalAmount = $query->sum('amount');
+
+        return ApiResponse::success([
+            'totalCount' => $totalCount,  // 总订单数
+            'totalAmount' => $totalAmount,  // 总金额
+            'orders' => $orders,  // 所有订单
         ]);
     }
 }

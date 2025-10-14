@@ -50,7 +50,6 @@ class RechargeController extends Controller
                 'amount' => $amount,
                 'actual_amount' => $amount,
                 'fee' => 0.00,
-                'status' => 0,
                 'balance_before' => 0.00,
                 'balance_after' => 0.00,
                 'transaction_type'=> 'recharge', 

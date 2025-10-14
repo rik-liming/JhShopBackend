@@ -22,11 +22,11 @@ class AdminController extends Controller
     public function login(Request $request)
     {
         $request->validate([
-            'username' => 'required',
+            'user_name' => 'required',
             'password' => 'required'
         ]);
 
-        $admin = Admin::where('user_name', $request->username)->first();
+        $admin = Admin::where('user_name', $request->user_name)->first();
 
         if (!$admin || !Hash::check($request->password, $admin->password)) {
             return ApiResponse::error(ApiCode::ADMIN_NAME_PASSWORD_WRONG);
@@ -50,13 +50,13 @@ class AdminController extends Controller
                 $admin->two_factor_secret,
             );
             return ApiResponse::success([
-                'qrCodeUrl' => $qrCodeUrl
+                'qr_code_url' => $qrCodeUrl
             ]);
         }
         
         // 返回需要输入OTP
         return ApiResponse::success([
-            'needOtp' => true,
+            'need_otp' => true,
         ]);
     }
 
@@ -64,11 +64,11 @@ class AdminController extends Controller
     public function verifyOtp(Request $request)
     {
         $request->validate([
-            'username' => 'required',
+            'user_name' => 'required',
             'otp' => 'required'
         ]);
 
-        $admin = Admin::where('user_name', $request->username)->first();
+        $admin = Admin::where('user_name', $request->user_name)->first();
         if (!$admin) {
             return ApiResponse::error(ApiCode::ADMIN_NOT_FOUND);
         }
@@ -112,7 +112,7 @@ class AdminController extends Controller
     {
         // 获取分页参数
         $page = $request->input('page', 1);  // 当前页，默认是第1页
-        $pageSize = $request->input('pagesize', 10);  // 每页显示的记录数，默认是10条
+        $pageSize = $request->input('page_size', 10);  // 每页显示的记录数，默认是10条
 
         // 获取关键词和角色过滤参数
         $keyword = $request->input('keyword', '');  // 搜索关键词，默认空字符串

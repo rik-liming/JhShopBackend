@@ -25,21 +25,26 @@ class WithdrawController extends Controller
             return ApiResponse::error(ApiCode::USER_NOT_FOUND);
         }
 
+        $withdrawAddress = $request->withdrawAddress;
+        $amount = $request->amount;
+
         $date = Carbon::now()->format('YmdHis'); // 获取当前日期和时间，格式：202506021245
         $randomNumber = str_pad(rand(0, 9999), 4, '0', STR_PAD_LEFT); // 生成 4 位随机数，填充 0
         $transaction_id = $date . $randomNumber;
 
         $newWithdraw = DB::transaction(function() use ($request, $userId, 
-            $amount, $transaction_id) {
+            $amount, $withdrawAddress, $transaction_id) {
 
             $withdraw = Withdraw::create([
                 'transaction_id' => $transaction_id,
                 'user_id' => $userId, // 当前登录用户的ID
                 'user_name' => '',
                 'amount' => $amount,
-                'actual_amount' => $amount - 2.00,
+                'exchange_rate' => 7.26,
+                'cny_amount' => 2320,
+                'withdraw_address' => $withdrawAddress,
                 'fee' => 2.00,
-                'withdraw_address' => 'afdsfxerwrwwe',
+                'actual_amount' => $amount + 2.00,
                 'status' => 0,
             ]);
 
@@ -47,22 +52,20 @@ class WithdrawController extends Controller
                 'transaction_id' => $transaction_id,
                 'user_id' => $userId, // 当前登录用户的ID
                 'amount' => $amount,
-                'actual_amount' => $amount - 2.00,
+                'exchange_rate' => 7.26,
+                'cny_amount' => 2320,
                 'fee' => 2.00,
-                'status' => 0,
+                'actual_amount' => $amount - 2.00,
                 'balance_before' => 0.00,
                 'balance_after' => 0.00,
                 'transaction_type'=> 'withdraw', 
-                'order_id' => '',
-                'payment_method' => '',
-                'description' => '',
             ]);
 
             return $withdraw;
         });
 
         return ApiResponse::success([
-            'id' => $newWithdraw->id,
+            'withdraw' => $newWithdraw,
         ]);
     }
 
@@ -71,7 +74,8 @@ class WithdrawController extends Controller
      */
     public function getWithdrawByTranaction(Request $request)
     {
-        $withdraw = Withdraw::where('transaction_id', $request->transaction_id)
+        $withdraw = Withdraw::with('transaction')
+            ->where('transaction_id', $request->transaction_id)
             ->first();
 
         if (!$withdraw) {

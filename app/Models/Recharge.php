@@ -15,7 +15,6 @@ class Recharge extends Authenticatable
     protected $table = 'jh_user_recharge';
 
     protected $fillable = [
-        'transaction_id',
         'user_id',
         'user_name',
         'amount',
@@ -23,6 +22,8 @@ class Recharge extends Authenticatable
         'cny_amount',
         'recharge_address',
         'recharge_images',
+        'balance_before',
+        'balance_after',
         'status',
     ];
 

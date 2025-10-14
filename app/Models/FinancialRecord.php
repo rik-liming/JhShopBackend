@@ -20,13 +20,10 @@ class FinancialRecord extends Authenticatable
         'amount',
         'exchange_rate',
         'cny_amount',
-        'actual_amount',
         'fee',
-        'balance_before',
-        'balance_after',
+        'actual_amount',
         'transaction_type',
-        'order_id',
-        'payment_method',
+        'reference_id',
         'description',
     ];
 
