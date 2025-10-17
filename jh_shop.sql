@@ -135,9 +135,11 @@ CREATE TABLE `jh_platform_config` (
   `payment_qr_code` varchar(255) DEFAULT NULL COMMENT '收款二维码路径（二维码图片）',
   `transfer_fee` decimal(5,2) NOT NULL DEFAULT '0.00' COMMENT '转账手续费',
   `withdrawl_fee` decimal(5,2) NOT NULL DEFAULT '0.00' COMMENT '提现手续费',
+  `exchange_rate_platform` decimal(5,2) NOT NULL DEFAULT '0.00' COMMENT '平台兑换比率',
   `exchange_rate_alipay` decimal(5,2) NOT NULL DEFAULT '0.00' COMMENT '支付宝兑换比率',
   `exchange_rate_wechat` decimal(5,2) NOT NULL DEFAULT '0.00' COMMENT '微信兑换比率',
   `exchange_rate_bank` decimal(5,2) NOT NULL DEFAULT '0.00' COMMENT '银行卡兑换比率',
+  `advertisement_text` varchar(1024) NULL COMMENT '平台广告语',
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='平台配置表';
@@ -146,8 +148,8 @@ CREATE TABLE `jh_platform_config` (
 -- 转存表中的数据 `jh_platform_config`
 --
 
-INSERT INTO `jh_platform_config` (`id`, `payment_address`, `payment_qr_code`, `transfer_fee`, `withdrawl_fee`, `exchange_rate_alipay`, `exchange_rate_wechat`, `exchange_rate_bank`, `created_at`, `updated_at`) VALUES
-(1, 'jjusfafxsdfsjeexxseeed', '', '2.00', '2.00', '7.24', '7.25', '7.26', '2025-10-14 20:51:37', '2025-10-14 20:51:37');
+INSERT INTO `jh_platform_config` (`id`, `payment_address`, `payment_qr_code`, `transfer_fee`, `withdrawl_fee`, `exchange_rate_platform`, `exchange_rate_alipay`, `exchange_rate_wechat`, `exchange_rate_bank`, `advertisement_text`, `created_at`, `updated_at`) VALUES
+(1, 'jjusfafxsdfsjeexxseeed', '', '2.00', '2.00', '7.25', '7.24', '7.25', '7.26', 'Welcome to our platform!', '2025-10-14 20:51:37', '2025-10-14 20:51:37');
 
 -- --------------------------------------------------------
 

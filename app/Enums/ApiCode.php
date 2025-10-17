@@ -18,15 +18,21 @@ class ApiCode
     const USER_2FA_INVALID = 20004;
     const USER_ILLEGAL = 20005;
     const USER_BALANCE_NOT_ENOUGH = 20006;
+    const USER_ACCOUNT_NOT_FOUND = 20007;
 
+    // 订单相关
     const ORDER_LISTING_NOT_FOUND = 20100;
     const ORDER_LISTING_AMOUNT_NOT_ENOUGH = 20101;
     const ORDER_CREATE_FAIL = 20102;
     const ORDER_NOT_FOUND = 20103;
 
+    // 交易相关
     const TRANSFER_NOT_FOUND = 20200;
     const RECHARGE_NOT_FOUND = 20201;
     const WITHDRAW_NOT_FOUND = 20202;
+
+    // 配置相关
+    const CONFIG_NOT_FOUND = 20300;
 
     // admin相关
     const ADMIN_NAME_PASSWORD_WRONG = 30001;
@@ -45,14 +51,21 @@ class ApiCode
         self::USER_2FA_INVALID => '验证码错误',
         self::USER_ILLEGAL => '非法用户',
         self::USER_BALANCE_NOT_ENOUGH => '用户余额不足',
-
-        self::ADMIN_NAME_PASSWORD_WRONG => '用户名或密码错误',
-        self::ADMIN_NOT_FOUND => '账号不存在',
-        self::ADMIN_2FA_INVALID => '验证码错误',
+        self::USER_ACCOUNT_NOT_FOUND => '用户余额账户不存在',
 
         self::ORDER_LISTING_NOT_FOUND => '无该挂单信息',
         self::ORDER_LISTING_AMOUNT_NOT_ENOUGH => '挂单库存不足',
         self::ORDER_CREATE_FAIL => '订单创建失败',
         self::ORDER_NOT_FOUND => '订单不存在',
+
+        self::TRANSFER_NOT_FOUND => '转账记录不存在',
+        self::RECHARGE_NOT_FOUND => '充值记录不存在',
+        self::WITHDRAW_NOT_FOUND => '提现记录不存在',
+
+        self::CONFIG_NOT_FOUND => '配置不存在',
+
+        self::ADMIN_NAME_PASSWORD_WRONG => '用户名或密码错误',
+        self::ADMIN_NOT_FOUND => '账号不存在',
+        self::ADMIN_2FA_INVALID => '验证码错误',
     ];
 }

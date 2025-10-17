@@ -451,9 +451,11 @@ CREATE TABLE `jh_platform_config` (
   `payment_qr_code` VARCHAR(255) DEFAULT NULL COMMENT '收款二维码路径（二维码图片）',
   `transfer_fee` DECIMAL(5,2) NOT NULL DEFAULT 0.00 COMMENT '转账手续费',
   `withdrawl_fee` DECIMAL(5,2) NOT NULL DEFAULT 0.00 COMMENT '提现手续费',
-  `exchange_rate_alipay` DECIMAL(5,2) NOT NULL DEFAULT 0.00 COMMENT '支付宝兑换比率',
-  `exchange_rate_wechat` DECIMAL(5,2) NOT NULL DEFAULT 0.00 COMMENT '微信兑换比率',
-  `exchange_rate_bank` DECIMAL(5,2) NOT NULL DEFAULT 0.00 COMMENT '银行卡兑换比率',
+  `exchange_rate_platform` DECIMAL(5,2) NOT NULL DEFAULT 0.00 COMMENT '平台兑换比率',
+  `exchange_rate_alipay` DECIMAL(5,2) NOT NULL DEFAULT 0.00 COMMENT '支付宝市场兑换比率',
+  `exchange_rate_wechat` DECIMAL(5,2) NOT NULL DEFAULT 0.00 COMMENT '微信市场兑换比率',
+  `exchange_rate_bank` DECIMAL(5,2) NOT NULL DEFAULT 0.00 COMMENT '银行卡市场兑换比率',
+  `advertisement_text` VARCHAR(1024) NULL COMMENT '平台广告语',
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`)
@@ -463,6 +465,6 @@ CREATE TABLE `jh_platform_config` (
 -- Records of jh_platform_config
 -- ----------------------------
 INSERT INTO `jh_platform_config` 
-(`id`, `payment_address`, `payment_qr_code`, `transfer_fee`, `withdrawl_fee`, `exchange_rate_alipay`, `exchange_rate_wechat`, `exchange_rate_bank`) 
+(`id`, `payment_address`, `payment_qr_code`, `transfer_fee`, `withdrawl_fee`, `exchange_rate_platform`, `exchange_rate_alipay`, `exchange_rate_wechat`, `exchange_rate_bank`, `advertisement_text`) 
 VALUES
-(1, 'jjusfafxsdfsjeexxseeed', '', 2.00, 2.00, 7.24, 7.25, 7.26)
+(1, 'jjusfafxsdfsjeexxseeed', '', 2.00, 2.00, 7.25, 7.24, 7.25, 7.26, 'Welcome to our platform!')
