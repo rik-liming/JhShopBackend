@@ -56,7 +56,6 @@ class OrderController extends Controller
             // 创建订单记录
             $order = new Order([
                 'order_listing_id' => $orderListing->id,
-                ''
                 'amount' => $request->amount,
                 'payment_method' => $request->payment_method,
                 'buy_user_id' => $request->buy_user_id,

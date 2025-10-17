@@ -222,6 +222,8 @@ CREATE TABLE `jh_user_financial_record` (
   `cny_amount` decimal(15,2) NOT NULL COMMENT '等值的CNY提现金额',
   `fee` decimal(15,2) NOT NULL COMMENT '手续费',
   `actual_amount` decimal(15,2) NOT NULL COMMENT '实际变动金额（可以是负值或正值，加上了手续费）',
+  `balance_before` decimal(15,2) NOT NULL COMMENT '变动前的账户余额',
+  `balance_after` decimal(15,2) NOT NULL COMMENT '变动后的账户余额',
   `transaction_type` enum('recharge','transfer_send','transfer_receive','withdraw','order_buy','order_sell') NOT NULL COMMENT '变动类型：recharge（充值）、transfer_send（转账-转出）、transfer_receive（转账-转入）、withdraw（提现）、order（订单）',
   `reference_id` int(10) UNSIGNED DEFAULT NULL COMMENT '关联ID，比如转账的记录ID，订单ID',
   `description` text COMMENT '变动描述（可选）',
@@ -336,6 +338,7 @@ INSERT INTO `jh_user_privilege_rule` (`id`, `pid`, `router_key`, `type`, `name`,
 
 CREATE TABLE `jh_user_recharge` (
   `id` int(10) UNSIGNED NOT NULL COMMENT '充值记录ID',
+  `display_recharge_id` varchar(255) NOT NULL COMMENT '用于展示的充值单号（比如202501010001）',
   `user_id` int(10) UNSIGNED NOT NULL COMMENT '用户ID（外键，关联用户表）',
   `user_name` varchar(32) NOT NULL DEFAULT '' COMMENT '用户名',
   `amount` decimal(15,2) NOT NULL COMMENT '充值金额',

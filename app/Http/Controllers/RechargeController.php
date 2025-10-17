@@ -54,14 +54,21 @@ class RechargeController extends Controller
             return ApiResponse::error(ApiCode::CONFIG_NOT_FOUND);
         }
 
-        $date = Carbon::now()->format('YmdHis'); // 获取当前日期和时间，格式：202506021245
-
+        // transaction id
         $today = Carbon::now()->format('Ymd');
         $todayTransactionIncrKey = "transaction:{$today}:sequence";
         $transactionSequence = Redis::incr($todayTransactionIncrKey);
 
         $formattedSequence = str_pad($transactionSequence, 4, '0', STR_PAD_LEFT); // 生成 3 位随机数，填充 0
-        $transaction_id = "${date}_${formattedSequence}";
+        $transaction_id = "${today}_${formattedSequence}";
+
+        // display recharge id
+        $date = Carbon::now()->format('YmdHis');
+        $todayRechargeIncrKey = "recharge:{$today}:sequence";
+        $rechargeSequence = Redis::incr($todayRechargeIncrKey);
+
+        $formattedSequence = str_pad($rechargeSequence, 4, '0', STR_PAD_LEFT); // 生成 3 位随机数，填充 0
+        $display_recharge_id = "${date}${formattedSequence}";
 
         $amount = $request->amount;
 
@@ -85,13 +92,14 @@ class RechargeController extends Controller
         $recharge_images = $imageDirectory . '/' . $imageName;
 
         $newRecharge = DB::transaction(function() use ($request, $userId, 
-            $user, $config, $userAccount, $amount, $recharge_images, $transaction_id) {
+            $user, $config, $userAccount, $amount, $recharge_images, $transaction_id, $display_recharge_id) {
 
             $cnyAmount = bcmul($amount, $config->exchange_rate_platform, 2);
             $cnyAmount = ceil($cnyAmount * 100) / 100;
 
             $recharge = Recharge::create([
-                'user_id' => $userId, // 当前登录用户的ID
+                'display_recharge_id' => $display_recharge_id,
+                'user_id' => $userId,
                 'user_name' => $user->user_name,
                 'amount' => $amount,
                 'exchange_rate' => $config->exchange_rate_platform,
@@ -111,6 +119,8 @@ class RechargeController extends Controller
                 'cny_amount' => $cnyAmount,
                 'fee' => 0.00,
                 'actual_amount' => $amount,
+                'balance_before' => $userAccount->total_balance,
+                'balance_after' => bcadd($userAccount->total_balance, $amount, 2),
                 'transaction_type'=> 'recharge',
                 'reference_id' => $recharge->id,
                 'description' => "",
@@ -129,7 +139,7 @@ class RechargeController extends Controller
      */
     public function getRechargeByTranaction(Request $request)
     {
-        $recharge = Recharge::where('transaction_id', $request->transaction_id)
+        $recharge = Recharge::where('id', $request->id)
             ->first();
 
         if (!$recharge) {

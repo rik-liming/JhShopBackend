@@ -22,6 +22,8 @@ class FinancialRecord extends Authenticatable
         'cny_amount',
         'fee',
         'actual_amount',
+        'balance_before',
+        'balance_after',
         'transaction_type',
         'reference_id',
         'description',

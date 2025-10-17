@@ -15,6 +15,7 @@ class Recharge extends Authenticatable
     protected $table = 'jh_user_recharge';
 
     protected $fillable = [
+        'display_recharge_id',
         'user_id',
         'user_name',
         'amount',
