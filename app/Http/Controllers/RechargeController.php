@@ -64,10 +64,6 @@ class RechargeController extends Controller
 
         // display recharge id
         $date = Carbon::now()->format('YmdHis');
-        $todayRechargeIncrKey = "recharge:{$today}:sequence";
-        $rechargeSequence = Redis::incr($todayRechargeIncrKey);
-
-        $formattedSequence = str_pad($rechargeSequence, 4, '0', STR_PAD_LEFT); // 生成 3 位随机数，填充 0
         $display_recharge_id = "${date}${formattedSequence}";
 
         $amount = $request->amount;
@@ -106,8 +102,8 @@ class RechargeController extends Controller
                 'cny_amount' => $cnyAmount,
                 'recharge_address' => $config->payment_address,
                 'recharge_images' => $recharge_images, // text 类型字段，传递空字符串
-                'balance_before' => $userAccount->total_balance,
-                'balance_after' => bcadd($userAccount->total_balance, $amount, 2),
+                'balance_before' => 0.00,
+                'balance_after' => 0.00,
                 'status' => 0,
             ]);
 
@@ -119,10 +115,11 @@ class RechargeController extends Controller
                 'cny_amount' => $cnyAmount,
                 'fee' => 0.00,
                 'actual_amount' => $amount,
-                'balance_before' => $userAccount->total_balance,
-                'balance_after' => bcadd($userAccount->total_balance, $amount, 2),
+                'balance_before' => 0.00,
+                'balance_after' => 0.00,
                 'transaction_type'=> 'recharge',
                 'reference_id' => $recharge->id,
+                'display_reference_id' => $display_recharge_id,
                 'description' => "",
             ]);
 

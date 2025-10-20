@@ -26,6 +26,7 @@ class FinancialRecord extends Authenticatable
         'balance_after',
         'transaction_type',
         'reference_id',
+        'display_reference_id',
         'description',
     ];
 

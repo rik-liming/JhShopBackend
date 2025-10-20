@@ -226,6 +226,7 @@ CREATE TABLE `jh_user_financial_record` (
   `balance_after` decimal(15,2) NOT NULL COMMENT '变动后的账户余额',
   `transaction_type` enum('recharge','transfer_send','transfer_receive','withdraw','order_buy','order_sell') NOT NULL COMMENT '变动类型：recharge（充值）、transfer_send（转账-转出）、transfer_receive（转账-转入）、withdraw（提现）、order（订单）',
   `reference_id` int(10) UNSIGNED DEFAULT NULL COMMENT '关联ID，比如转账的记录ID，订单ID',
+  `display_reference_id` varchar(255) NOT NULL COMMENT '关联的展示ID, 用于展示的充值单号（比如202501010001）',
   `description` text COMMENT '变动描述（可选）',
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '变动时间',
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '状态更新时间'

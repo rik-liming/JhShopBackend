@@ -20,7 +20,7 @@ class OrderListingController extends Controller
         // 验证输入参数
         $validator = Validator::make($request->all(), [
             'amount' => 'required|numeric|min:0.01',
-            'min_sale_amount' => 'required|numeric|min:0.01',
+            'min_sale_amount' => 'required|numeric|min:0',
             'payment_method' => 'required|in:bank,alipay,wechat',
         ]);
 
@@ -54,7 +54,7 @@ class OrderListingController extends Controller
         $newOrderListing = DB::transaction(function() use ($request, $userId) {
             // 创建挂单
             $orderListing = OrderListing::create([
-                'user_id' => $userId, // 当前登录用户的ID
+                'user_id' => $userId,
                 'amount' => $request->input('amount'),
                 'remain_amount' => $request->input('amount'),
                 'min_sale_amount' => $request->input('min_sale_amount'),
@@ -78,17 +78,17 @@ class OrderListingController extends Controller
     {
         // 验证输入参数
         $validator = Validator::make($request->all(), [
-            'channel' => 'required|in:bank,alipay,wechat',
+            'payment_method' => 'required|in:bank,alipay,wechat',
         ]);
 
         // 获取分页参数
         $page = $request->input('page', 1);  // 当前页，默认是第1页
-        $pageSize = $request->input('pagesize', 100);  // 每页显示的记录数，默认是10条
-        $channel = $request->input('channel', '');  // 搜索关键词，默认空字符串
+        $pageSize = $request->input('page_size', 100);  // 每页显示的记录数，默认是10条
+        $payment_method = $request->input('payment_method', '');  // 搜索关键词，默认空字符串
 
         // 构建查询
         $query = OrderListing::where('status', 1)
-                     ->where('payment_method', $request->channel);
+                     ->where('payment_method', $payment_method);
 
         // 获取符合条件的用户总数
         $totalCount = $query->count();
