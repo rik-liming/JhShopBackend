@@ -21,6 +21,7 @@ class Recharge extends Authenticatable
         'amount',
         'exchange_rate',
         'cny_amount',
+        'actual_amount',
         'recharge_address',
         'recharge_images',
         'balance_before',

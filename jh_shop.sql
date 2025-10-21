@@ -345,6 +345,7 @@ CREATE TABLE `jh_user_recharge` (
   `amount` decimal(15,2) NOT NULL COMMENT '充值金额',
   `exchange_rate` decimal(15,2) NOT NULL COMMENT '兑换比率',
   `cny_amount` decimal(15,2) NOT NULL COMMENT '等值的CNY充值金额',
+  `actual_amount` decimal(15,2) NOT NULL COMMENT '实际变动金额（充值金额）',
   `recharge_address` varchar(512) NOT NULL COMMENT '充值地址(USDT-TRC20)',
   `recharge_images` text NOT NULL COMMENT '充值截图',
   `status` tinyint(1) NOT NULL DEFAULT '1' COMMENT '交易状态：0 待确认; -1 已驳回; 1 已通过',
@@ -418,6 +419,7 @@ INSERT INTO `jh_user_role_rule` (`role`, `rule_id`) VALUES
 
 CREATE TABLE `jh_user_transfer` (
   `id` int(10) UNSIGNED NOT NULL COMMENT '转账记录ID',
+  `display_transfer_id` varchar(255) NOT NULL COMMENT '用于展示的充值单号（比如202501010001）',
   `sender_user_id` int(10) UNSIGNED NOT NULL COMMENT '发送者用户ID（外键，关联用户表）',
   `receiver_user_id` int(10) UNSIGNED NOT NULL COMMENT '接收者用户ID（外键，关联用户表）',
   `sender_user_name` varchar(32) NOT NULL COMMENT '发送者用户名',
@@ -426,7 +428,7 @@ CREATE TABLE `jh_user_transfer` (
   `exchange_rate` decimal(15,2) NOT NULL COMMENT '兑换比率',
   `cny_amount` decimal(15,2) NOT NULL COMMENT '等值的CNY转账金额',
   `fee` decimal(15,2) NOT NULL COMMENT '转账手续费',
-  `actual_amount` decimal(15,2) NOT NULL COMMENT '实际扣除金额（转账金额+手续费）',
+  `actual_amount` decimal(15,2) NOT NULL COMMENT '实际变动金额（转账金额+手续费）',
   `status` tinyint(1) NOT NULL DEFAULT '1' COMMENT '交易状态：0 待确认; -1 已驳回; 1 已通过',
   `sender_balance_before` decimal(15,2) NOT NULL COMMENT '变动前的发送者账户余额',
   `sender_balance_after` decimal(15,2) NOT NULL COMMENT '变动后的发送者账户余额',
@@ -444,13 +446,14 @@ CREATE TABLE `jh_user_transfer` (
 
 CREATE TABLE `jh_user_withdrawal` (
   `id` int(10) UNSIGNED NOT NULL COMMENT '提现记录ID',
+  `display_withdraw_id` varchar(255) NOT NULL COMMENT '用于展示的充值单号（比如202501010001）',
   `user_id` int(10) UNSIGNED NOT NULL COMMENT '用户ID（外键，关联用户表）',
   `user_name` varchar(32) NOT NULL DEFAULT '' COMMENT '用户名',
   `amount` decimal(15,2) NOT NULL COMMENT '提现金额',
   `exchange_rate` decimal(15,2) NOT NULL COMMENT '兑换比率',
   `cny_amount` decimal(15,2) NOT NULL COMMENT '等值的CNY提现金额',
   `fee` decimal(15,2) NOT NULL COMMENT '提现手续费',
-  `actual_amount` decimal(15,2) NOT NULL COMMENT '实际扣除金额（提现金额+手续费）',
+  `actual_amount` decimal(15,2) NOT NULL COMMENT '实际变动金额（提现金额+手续费）',
   `withdraw_address` varchar(512) NOT NULL COMMENT '提现地址(USDT-TRC20)',
   `status` tinyint(1) NOT NULL DEFAULT '1' COMMENT '交易状态：0 待确认; -1 已驳回; 1 已通过',
   `balance_before` decimal(15,2) NOT NULL COMMENT '变动前的账户余额',

@@ -15,16 +15,16 @@ use App\Helpers\ApiResponse;
 use App\Enums\ApiCode;
 
 use App\Models\User;
-use App\Models\Recharge;
+use App\Models\Withdraw;
 use App\Models\UserAccount;
 use App\Models\FinancialRecord;
 
-class AdminRechargeController extends Controller
+class AdminWithdrawController extends Controller
 {
     /**
-     * 分页获取充值信息
+     * 分页获取信息
      */
-    public function getRechargeByPage(Request $request)
+    public function getWithdrawByPage(Request $request)
     {
         // 获取分页参数
         $page = $request->input('page', 1);  // 当前页，默认是第1页
@@ -32,7 +32,7 @@ class AdminRechargeController extends Controller
         $user_id = $request->input('user_id', '');  // 搜索关键词，默认空字符串
 
         // 构建查询
-        $query = Recharge::where('status', '!=', -1);  // 过滤掉status为-1的
+        $query = Withdraw::where('status', '!=', -1);  // 过滤掉status为-1的
 
         if ($user_id) {
             $query->where('user_id', $user_id);
@@ -42,7 +42,7 @@ class AdminRechargeController extends Controller
         $totalCount = $query->count();
 
         // 分页
-        $recharges = $query->skip(($page - 1) * $pageSize)  // 计算分页的偏移量
+        $withdraws = $query->skip(($page - 1) * $pageSize)  // 计算分页的偏移量
                     ->take($pageSize)  // 每页获取指定数量的用户
                     ->get();
 
@@ -50,60 +50,69 @@ class AdminRechargeController extends Controller
             'total' => $totalCount,  // 总记录数
             'current_page' => $page,  // 当前页
             'page_size' => $pageSize,  // 每页记录数
-            'recharges' => $recharges,  // 当前页的用户列表
+            'withdraws' => $withdraws,  // 当前页的用户列表
         ]);
     }
 
     /**
-     * 更新充值信息
+     * 更新信息
      */
-    public function updateRecharge(Request $request)
+    public function updateWithdraw(Request $request)
     {
         // 获取传入的更新参数
         $status = $request->input('status', null);  // 状态
 
         // 查找指定ID的用户
-        $recharge = Recharge::find($request->id);
+        $withdraw = Withdraw::find($request->id);
 
-        if (!$recharge) {
-            return ApiResponse::error(ApiCode::RECHARGE_NOT_FOUND);
+        if (!$withdraw) {
+            return ApiResponse::error(ApiCode::WITHDRAW_NOT_FOUND);
         }
 
         // 更新用户信息
-        if ($status !== $recharge->status) {
-            $recharge->status = $status;
+        if ($withdraw->status !== $status) {
+            $withdraw->status = $status;
         }
 
-        $userAccount = UserAccount::where('user_id', $recharge->user_id)->first();
-        if (!$userAccount) {
-            return ApiResponse::error(ApiCode::USER_ACCOUNT_NOT_FOUND);
+        $userAccount = null;
+        if ($status === 1) {
+            $userAccount = UserAccount::where('user_id', $withdraw->user_id)->first();
+            if (!$userAccount) {
+                return ApiResponse::error(ApiCode::USER_ACCOUNT_NOT_FOUND);
+            }
         }
         
-        $newRecharge = DB::transaction(function() use ($recharge, $userAccount) {
+        $newWithdraw = DB::transaction(function() use ($withdraw, $userAccount) {
 
-            $financeRecord = FinancialRecord::where('reference_id', $recharge->id)
+            $totalExpense = bcadd($withdraw->amount, $withdraw->fee, 2);
+
+            $financeRecord = FinancialRecord::where('reference_id', $withdraw->id)
                 ->first();
 
             // 如果通过审核，需要进行变动操作
-            if ($recharge->status === 1) {
+            if ($withdraw->status === 1) {
 
-                // 加钱
+                // 减钱
                 $balanceBefore = $userAccount->total_balance;
-                $balanceAfter = bcadd($userAccount->total_balance, $recharge->amount, 2);
+                $balanceAfter = bcsub($userAccount->total_balance, $totalExpense, 2);
 
+                // 注意，available余额是不用变动的，因为已经冻结过了
                 $userAccount->total_balance = $balanceAfter;
-                $userAccount->available_balance = bcadd($userAccount->available_balance, $recharge->amount, 2);
                 $userAccount->save();
 
-                // 更新充值信息
-                $recharge->balance_before = $balanceBefore;
-                $recharge->balance_after = $balanceAfter;
+                // 更新信息
+                $withdraw->balance_before = $balanceBefore;
+                $withdraw->balance_after = $balanceAfter;
                 
                 // 更新财务变动
                 $financeRecord->balance_before = $balanceBefore;
                 $financeRecord->balance_after = $balanceAfter;
-                $financeRecord->actual_amount = $recharge->amount;
+                $financeRecord->actual_amount = $totalExpense;
             } else if ($recharge->status === -1) {
+                // 驳回需要把冻结的可用资金释放
+                $userAccount->available_balance = bcadd($userAccount->available_balance, $totalExpense, 2);
+                $userAccount->save();
+
                 // 更新财务变动
                 $financeRecord->balance_before = $userAccount->total_balance;
                 $financeRecord->balance_after = $userAccount->total_balance;
@@ -111,15 +120,15 @@ class AdminRechargeController extends Controller
             }
 
             // 无论是否通过，都需要更新充值信息
-            $recharge->save();
+            $withdraw->save();
 
             $financeRecord->save();
 
-            return $recharge;
+            return $withdraw;
         });
 
         return ApiResponse::success([
-            'recharge' => $recharge
+            'withdraw' => $withdraw
         ]);
     }
 }

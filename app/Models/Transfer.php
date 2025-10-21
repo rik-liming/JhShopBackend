@@ -16,6 +16,7 @@ class Transfer extends Authenticatable
     protected $table = 'jh_user_transfer';
 
     protected $fillable = [
+        'display_transfer_id',
         'sender_user_id',
         'sender_user_name',
         'receiver_user_id',

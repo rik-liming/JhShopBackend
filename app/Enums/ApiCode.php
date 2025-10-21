@@ -19,6 +19,8 @@ class ApiCode
     const USER_ILLEGAL = 20005;
     const USER_BALANCE_NOT_ENOUGH = 20006;
     const USER_ACCOUNT_NOT_FOUND = 20007;
+    const USER_PAYMENT_PASSWORD_NOT_SET = 20008;
+    const USER_PAYMENT_PASSWORD_WRONG = 20009;
 
     // 订单相关
     const ORDER_LISTING_NOT_FOUND = 20100;
@@ -52,6 +54,8 @@ class ApiCode
         self::USER_ILLEGAL => '非法用户',
         self::USER_BALANCE_NOT_ENOUGH => '用户余额不足',
         self::USER_ACCOUNT_NOT_FOUND => '用户余额账户不存在',
+        self::USER_PAYMENT_PASSWORD_NOT_SET => '支付密码未设置',
+        self::USER_PAYMENT_PASSWORD_WRONG => '支付密码错误',
 
         self::ORDER_LISTING_NOT_FOUND => '无该挂单信息',
         self::ORDER_LISTING_AMOUNT_NOT_ENOUGH => '挂单库存不足',

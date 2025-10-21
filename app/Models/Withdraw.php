@@ -16,6 +16,7 @@ class Withdraw extends Authenticatable
     protected $table = 'jh_user_withdrawal';
 
     protected $fillable = [
+        'display_withdraw_id',
         'user_id',
         'user_name',
         'amount',

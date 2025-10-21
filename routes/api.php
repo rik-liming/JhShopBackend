@@ -16,6 +16,7 @@ use App\Http\Controllers\FinancialRecordController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\AdminRechargeController;
+use App\Http\Controllers\AdminWithdrawController;
 use App\Http\Controllers\AdminOrderListingController;
 
 Route::post('/register', [AuthController::class, 'register']);
@@ -60,6 +61,9 @@ Route::middleware(['check.admin.token'])->group(function () {
 
     Route::get('/admin/recharge/page', [AdminRechargeController::class, 'getRechargeByPage']);
     Route::put('/admin/recharge', [AdminRechargeController::class, 'updateRecharge']);
+
+    Route::get('/admin/withdraw/page', [AdminWithdrawController::class, 'getWithdrawByPage']);
+    Route::put('/admin/withdraw', [AdminWithdrawController::class, 'updateWithdraw']);
 
     Route::get('/admin/order_listing/page', [AdminOrderListingController::class, 'getOrderListingByPage']);
     Route::put('/admin/order_listing', [AdminOrderListingController::class, 'updateOrderListing']);

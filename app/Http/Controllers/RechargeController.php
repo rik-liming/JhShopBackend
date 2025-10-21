@@ -100,6 +100,7 @@ class RechargeController extends Controller
                 'amount' => $amount,
                 'exchange_rate' => $config->exchange_rate_platform,
                 'cny_amount' => $cnyAmount,
+                'actual_amount' => 0.00,
                 'recharge_address' => $config->payment_address,
                 'recharge_images' => $recharge_images, // text 类型字段，传递空字符串
                 'balance_before' => 0.00,
@@ -114,7 +115,7 @@ class RechargeController extends Controller
                 'exchange_rate' => $config->exchange_rate_platform,
                 'cny_amount' => $cnyAmount,
                 'fee' => 0.00,
-                'actual_amount' => $amount,
+                'actual_amount' => 0.00,
                 'balance_before' => 0.00,
                 'balance_after' => 0.00,
                 'transaction_type'=> 'recharge',
