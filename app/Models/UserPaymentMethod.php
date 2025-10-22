@@ -16,7 +16,7 @@ class UserPaymentMethod extends Authenticatable
 
     protected $fillable = [
         'user_id',
-        'pay_type',
+        'payment_method',
         'account_name',
         'account_number',
         'bank_name',

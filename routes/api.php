@@ -12,6 +12,7 @@ use App\Http\Controllers\RechargeController;
 use App\Http\Controllers\TransferController;
 use App\Http\Controllers\WithdrawController;
 use App\Http\Controllers\FinancialRecordController;
+use App\Http\Controllers\PaymentMethodController;
 
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AdminUserController;
@@ -26,6 +27,13 @@ Route::post('/logout', [AuthController::class, 'logout']);
 
 Route::middleware(['check.api.token'])->group(function () {
     Route::get('/user/info', [UserController::class, 'getUserInfo']);
+    Route::put('/user/password', [UserController::class, 'updatePassword']);
+
+    Route::get('/payment_method/my', [PaymentMethodController::class, 'getMyList']);
+    Route::get('/payment_method', [PaymentMethodController::class, 'getInfo']);
+    Route::post('/payment_method', [PaymentMethodController::class, 'create']);
+    Route::post('/payment_method/update', [PaymentMethodController::class, 'update']);
+    Route::delete('/payment_method', [PaymentMethodController::class, 'delete']);
 
     Route::post('/order_listing', [OrderListingController::class, 'createOrderListing']);
     Route::get('/order_listing/page', [OrderListingController::class, 'getOrderListingByPage']);
@@ -49,6 +57,8 @@ Route::middleware(['check.api.token'])->group(function () {
     Route::get('/withdraw/detail', [WithdrawController::class, 'getWithdrawByTranaction']);
 
     Route::get('/financial_record/my', [FinancialRecordController::class, 'getMyRecords']);
+
+    
 });
 
 Route::post('/admin/login', [AdminController::class, 'login']);

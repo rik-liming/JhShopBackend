@@ -21,6 +21,7 @@ class ApiCode
     const USER_ACCOUNT_NOT_FOUND = 20007;
     const USER_PAYMENT_PASSWORD_NOT_SET = 20008;
     const USER_PAYMENT_PASSWORD_WRONG = 20009;
+    const USER_PAYMENT_METHOD_NOT_FOUND = 20010;
 
     // 订单相关
     const ORDER_LISTING_NOT_FOUND = 20100;
@@ -56,6 +57,7 @@ class ApiCode
         self::USER_ACCOUNT_NOT_FOUND => '用户余额账户不存在',
         self::USER_PAYMENT_PASSWORD_NOT_SET => '支付密码未设置',
         self::USER_PAYMENT_PASSWORD_WRONG => '支付密码错误',
+        self::USER_PAYMENT_METHOD_NOT_FOUND => '未找到该支付方式',
 
         self::ORDER_LISTING_NOT_FOUND => '无该挂单信息',
         self::ORDER_LISTING_AMOUNT_NOT_ENOUGH => '挂单库存不足',
