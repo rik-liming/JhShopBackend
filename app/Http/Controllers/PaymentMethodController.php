@@ -114,20 +114,17 @@ class PaymentMethodController extends Controller
 
     public function update(Request $request)
     {
-        \Log::info('Request data: ', $request->all());
-
         // 验证输入参数
         $request->validate([
             'id' => 'required',
             'payment_method' => 'required|in:bank,alipay,wechat',
-            'account_number' => 'required|unique:jh_user_payment_method,account_number',
+            'account_number' => 'required',
             'account_name' => 'required',
             'verify_code' => 'required',
         ], [
             'id.required' => '支付渠道ID不能为空',
             'payment_method.required' => '支付渠道不能为空',
             'account_number.required' => '账号不能为空',
-            'account_number.unique' => '已存在该支付账号',
             'account_name.required' => '账户名不能为空',
             'verify_code.required' => '账户名不能为空',
         ]);
