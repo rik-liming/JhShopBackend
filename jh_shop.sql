@@ -242,6 +242,8 @@ CREATE TABLE `jh_user_order` (
   `id` int(10) UNSIGNED NOT NULL COMMENT '订单ID',
   `order_listing_id` int(10) UNSIGNED NOT NULL COMMENT '挂单ID（外键关联 jh_user_order_listing 表）',
   `display_order_id` varchar(255) NOT NULL COMMENT '用于展示的订单号（比如20250101_0001）',
+  `buy_transaction_id` varchar(255) DEFAULT NULL COMMENT '买家的交易ID（例如，支付流水号、转账流水号）',
+  `sell_transaction_id` varchar(255) DEFAULT NULL COMMENT '卖家的交易ID（例如，支付流水号、转账流水号）',
   `amount` decimal(15,2) UNSIGNED NOT NULL COMMENT '购买数量',
   `payment_method` enum('bank','alipay','wechat') NOT NULL COMMENT '支付方式',
   `buy_user_id` int(10) UNSIGNED NOT NULL COMMENT '购买用户ID（外键关联 jh_user 表）',

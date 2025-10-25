@@ -17,6 +17,8 @@ class Order extends Authenticatable
     protected $fillable = [
         'order_listing_id',
         'display_order_id',
+        'buy_transaction_id',
+        'sell_transaction_id',
         'amount',
         'payment_method',
         'buy_user_id',

@@ -64,7 +64,8 @@ class RechargeController extends Controller
 
         // display recharge id
         $date = Carbon::now()->format('YmdHis');
-        $display_recharge_id = "${date}${formattedSequence}";
+        $randomNumber = str_pad(rand(0, 9999), 4, '0', STR_PAD_LEFT); // 生成 4 位随机数，填充 0
+        $display_recharge_id = "${date}${randomNumber}";
 
         $amount = $request->amount;
 
@@ -99,7 +100,7 @@ class RechargeController extends Controller
                 'user_name' => $user->user_name,
                 'amount' => $amount,
                 'exchange_rate' => $config->exchange_rate_platform,
-                'cny_amount' => $cnyAmount,
+                'cny_amount' => $cnyAmount, 
                 'actual_amount' => 0.00,
                 'recharge_address' => $config->payment_address,
                 'recharge_images' => $recharge_images, // text 类型字段，传递空字符串

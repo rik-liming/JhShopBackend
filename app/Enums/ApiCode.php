@@ -22,12 +22,15 @@ class ApiCode
     const USER_PAYMENT_PASSWORD_NOT_SET = 20008;
     const USER_PAYMENT_PASSWORD_WRONG = 20009;
     const USER_PAYMENT_METHOD_NOT_FOUND = 20010;
+    const USER_PAYMENT_METHOD_NOT_SET = 20011;
 
     // 订单相关
     const ORDER_LISTING_NOT_FOUND = 20100;
     const ORDER_LISTING_AMOUNT_NOT_ENOUGH = 20101;
-    const ORDER_CREATE_FAIL = 20102;
-    const ORDER_NOT_FOUND = 20103;
+    const ORDER_LISTING_MIN_SALE_AMOUNT_LIMIT = 20102;
+    const ORDER_CREATE_FAIL = 20103;
+    const ORDER_NOT_FOUND = 20104;
+    const ORDER_CONFIRM_FAIL = 20105;
 
     // 交易相关
     const TRANSFER_NOT_FOUND = 20200;
@@ -58,11 +61,14 @@ class ApiCode
         self::USER_PAYMENT_PASSWORD_NOT_SET => '支付密码未设置',
         self::USER_PAYMENT_PASSWORD_WRONG => '支付密码错误',
         self::USER_PAYMENT_METHOD_NOT_FOUND => '未找到该支付方式',
+        self::USER_PAYMENT_METHOD_NOT_SET => '未设置收款信息',
 
         self::ORDER_LISTING_NOT_FOUND => '无该挂单信息',
         self::ORDER_LISTING_AMOUNT_NOT_ENOUGH => '挂单库存不足',
+        self::ORDER_LISTING_MIN_SALE_AMOUNT_LIMIT => '不满足挂单最低购买数量',
         self::ORDER_CREATE_FAIL => '订单创建失败',
         self::ORDER_NOT_FOUND => '订单不存在',
+        self::ORDER_CONFIRM_FAIL => '订单确认失败',
 
         self::TRANSFER_NOT_FOUND => '转账记录不存在',
         self::RECHARGE_NOT_FOUND => '充值记录不存在',

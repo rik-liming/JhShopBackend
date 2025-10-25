@@ -9,6 +9,7 @@ use App\Models\UserAccount;
 use Illuminate\Support\Facades\DB;
 use App\Helpers\ApiResponse;
 use App\Enums\ApiCode;
+use App\Models\UserPaymentMethod;
 
 class OrderListingController extends Controller
 {
@@ -43,12 +44,22 @@ class OrderListingController extends Controller
         )
         ->where('user_id', $userId)
         ->first();
+        
         if (!$userAccount) {
             return ApiResponse::error(ApiCode::USER_NOT_FOUND);
         }
 
         if ($request->input('amount') > $userAccount->available_balance) {
             return ApiResponse::error(ApiCode::USER_BALANCE_NOT_ENOUGH);
+        }
+
+        // 如果未设置收款信息，无法挂单
+        $paymentMethod = UserPaymentMethod::where('status', 1)
+            ->where('user_id', $userId)
+            ->where('payment_method', $request->input('payment_method'))
+            ->first();
+        if (!$paymentMethod) {
+            return ApiResponse::error(ApiCode::USER_PAYMENT_METHOD_NOT_SET);
         }
 
         $newOrderListing = DB::transaction(function() use ($request, $userId) {
@@ -63,7 +74,7 @@ class OrderListingController extends Controller
             ]);
 
             $userAccount = UserAccount::where('user_id', $userId)->first();
-            $userAccount->available_balance -= $request->input('amount');
+            $userAccount->available_balance = bcsub($userAccount->available_balance, $request->input('amount'), 2);
             $userAccount->save();
 
             return $orderListing;

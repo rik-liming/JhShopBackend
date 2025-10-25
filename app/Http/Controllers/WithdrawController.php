@@ -82,7 +82,8 @@ class WithdrawController extends Controller
 
         // display withdraw id
         $date = Carbon::now()->format('YmdHis');
-        $display_withdraw_id = "${date}${formattedSequence}";
+        $randomNumber = str_pad(rand(0, 9999), 4, '0', STR_PAD_LEFT); // 生成 4 位随机数，填充 0
+        $display_withdraw_id = "${date}${randomNumber}";
 
         $newWithdraw = DB::transaction(function() use ($request, $user, $userAccount, $config,
             $amount, $totalExpense, $withdraw_address, $display_withdraw_id, $transaction_id) {
