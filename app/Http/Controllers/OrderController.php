@@ -337,17 +337,22 @@ class OrderController extends Controller
                     $order->status = 2;
                     $order->save();
 
+                    // 更新卖家的总余额（可用余额在挂单时已经冻结，这里不需要处理）
+                    $balanceBefore = $userAccount->total_balance;
+                    $balanceAfter = bcsub($userAccount->total_balance, $order->total_price, 2);
+
+                    $userAccount->total_balance = $balanceAfter;
+                    $userAccount->save();
+
                     // 更新卖家的财务变动记录
                     $sellerTransaction = FinancialRecord::
                         where('transaction_id', $order->sell_transaction_id)
                         ->first();
                     
                     $sellerTransaction->actual_amount = $order->total_price;
+                    $sellerTransaction->balance_before = $balanceBefore;
+                    $sellerTransaction->balance_after = $balanceAfter;
                     $sellerTransaction->save();
-
-                    // 更新卖家的总余额（可用余额在挂单时已经冻结，这里不需要处理）
-                    $userAccount->total_balance = bcsub($userAccount->total_balance, $order->total_price, 2);
-                    $userAccount->save();
 
                     // 提交事务
                     DB::commit();
@@ -433,7 +438,7 @@ class OrderController extends Controller
 
         // 构建查询
         $query = Order::where('sell_user_id', $userId)
-                    ->where('status', 2);
+                    ->whereIn('status', [2, 4]);
 
         // 如果传入了时间范围，则加入时间条件
         if ($startDate) {
@@ -496,7 +501,7 @@ class OrderController extends Controller
 
         // 构建查询
         $query = Order::whereIn('sell_user_id', $userIds)
-                    ->where('status', 2);
+                    ->whereIn('status', [2, 4]);
 
         // 如果传入了时间范围，则加入时间条件
         if ($startDate) {
