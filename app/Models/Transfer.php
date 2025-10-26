@@ -17,6 +17,8 @@ class Transfer extends Authenticatable
 
     protected $fillable = [
         'display_transfer_id',
+        'sender_transaction_id',
+        'receiver_transaction_id',
         'sender_user_id',
         'sender_user_name',
         'receiver_user_id',

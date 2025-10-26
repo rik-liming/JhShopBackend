@@ -10,6 +10,7 @@ class ApiCode
     // 全局相关
     const FIELD_VERIFICATION_FAIL = 10001;
     const LOGIN_TOKEN_INVALID = 10002;
+    const OPERATION_FAIL = 10003;
 
     // 用户相关
     const INVALID_INVITE_CODE = 20001;
@@ -50,6 +51,7 @@ class ApiCode
 
         self::FIELD_VERIFICATION_FAIL => '字段校验失败',
         self::LOGIN_TOKEN_INVALID => 'token无效',
+        self::OPERATION_FAIL => '操作失败',
 
         self::INVALID_INVITE_CODE => '邀请码无效',
         self::USER_EMAIL_PASSWORD_WRONG => '邮箱或密码错误',

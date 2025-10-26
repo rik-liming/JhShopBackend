@@ -43,6 +43,7 @@ class AdminUserController extends Controller
                 'email',
                 'avatar',
                 'role',
+                'invite_code',
                 'status',
                 'created_at',
             )

@@ -186,8 +186,8 @@ CREATE TABLE `jh_user` (
 INSERT INTO `jh_user` (`id`, `inviter_id`, `inviter_name`, `root_agent_id`, `root_agent_name`, `role`, `user_name`, `real_name`, `password`, `email`, `phone`, `avatar`, `last_login_ip`, `last_login_time`, `invite_code`, `created_at`, `updated_at`, `status`, `two_factor_secret`) VALUES
 (1, 0, '', 0, '', 'platform', 'rootAgent', '平台总代理', '$2y$10$7N/zQ0VifAsI9ruJsRe9P.AZYZizUDddAwBv9cNGw7w0ABiyMXEDC', 'platform@jh.com', '13800000001', '/avatars/admin.png', '127.0.0.1', '2025-10-14 20:46:59', '88888888', '2025-10-14 20:46:59', '2025-10-14 20:46:59', 1, ''),
 (2, 1, 'rootAgent', 2, 'agent1', 'agent', 'agent1', '代理1', '$2y$10$7N/zQ0VifAsI9ruJsRe9P.AZYZizUDddAwBv9cNGw7w0ABiyMXEDC', 'agent1@jh.com', '13800000002', '/avatars/agent.png', '192.168.0.10', '2025-10-14 20:46:59', '88000001', '2025-10-14 20:46:59', '2025-10-14 20:46:59', 1, ''),
-(3, 2, 'agent1', 2, 'agent1', 'seller', 'seller1', '卖家1', '$2y$10$7N/zQ0VifAsI9ruJsRe9P.AZYZizUDddAwBv9cNGw7w0ABiyMXEDC', 'seller1@jh.com', '13800000003', '/avatars/seller.png', '192.168.0.11', '2025-10-14 20:46:59', '66000001', '2025-10-14 20:46:59', '2025-10-14 20:46:59', 1, ''),
-(4, 3, 'seller1', 2, 'agent1', 'seller', 'seller2', '卖家2', '$2y$10$7N/zQ0VifAsI9ruJsRe9P.AZYZizUDddAwBv9cNGw7w0ABiyMXEDC', 'seller2@jh.com', '13800000004', '/avatars/seller.png', '192.168.0.11', '2025-10-14 20:46:59', '66000002', '2025-10-14 20:46:59', '2025-10-14 20:46:59', 1, ''),
+(3, 2, 'agent1', 2, 'agent1', 'seller', 'seller1', '卖家1', '$2y$10$7N/zQ0VifAsI9ruJsRe9P.AZYZizUDddAwBv9cNGw7w0ABiyMXEDC', 'seller1@jh.com', '13800000003', '/avatars/seller.png', '192.168.0.11', '2025-10-14 20:46:59', NULL, '2025-10-14 20:46:59', '2025-10-14 20:46:59', 1, ''),
+(4, 3, 'seller1', 2, 'agent1', 'seller', 'seller2', '卖家2', '$2y$10$7N/zQ0VifAsI9ruJsRe9P.AZYZizUDddAwBv9cNGw7w0ABiyMXEDC', 'seller2@jh.com', '13800000004', '/avatars/seller.png', '192.168.0.11', '2025-10-14 20:46:59', NULL, '2025-10-14 20:46:59', '2025-10-14 20:46:59', 1, ''),
 (5, 3, 'seller1', 0, '', 'buyer', 'buyer1', '买家1', '$2y$10$7N/zQ0VifAsI9ruJsRe9P.AZYZizUDddAwBv9cNGw7w0ABiyMXEDC', 'buyer1@jh.com', '13800000005', '/avatars/buyer.png', '10.0.0.1', '2025-10-14 20:46:59', NULL, '2025-10-14 20:46:59', '2025-10-14 20:46:59', 1, ''),
 (6, 0, '', 0, '', 'autoBuyer', 'autoBuyer1', '自动化买家1', '$2y$10$7N/zQ0VifAsI9ruJsRe9P.AZYZizUDddAwBv9cNGw7w0ABiyMXEDC', 'autobuyer@jh.com', '13800000006', '/avatars/buyer.png', '10.0.0.1', '2025-10-14 20:46:59', NULL, '2025-10-14 20:46:59', '2025-10-14 20:46:59', 1, '');
 
@@ -421,6 +421,8 @@ INSERT INTO `jh_user_role_rule` (`role`, `rule_id`) VALUES
 
 CREATE TABLE `jh_user_transfer` (
   `id` int(10) UNSIGNED NOT NULL COMMENT '转账记录ID',
+  `sender_transaction_id` varchar(255) DEFAULT NULL COMMENT '发送者的交易ID（例如，支付流水号、转账流水号）',
+  `receiver_transaction_id` varchar(255) DEFAULT NULL COMMENT '接收者的交易ID（例如，支付流水号、转账流水号）',
   `display_transfer_id` varchar(255) NOT NULL COMMENT '用于展示的充值单号（比如202501010001）',
   `sender_user_id` int(10) UNSIGNED NOT NULL COMMENT '发送者用户ID（外键，关联用户表）',
   `receiver_user_id` int(10) UNSIGNED NOT NULL COMMENT '接收者用户ID（外键，关联用户表）',

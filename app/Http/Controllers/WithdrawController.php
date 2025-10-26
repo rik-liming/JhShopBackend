@@ -28,8 +28,8 @@ class WithdrawController extends Controller
             'withdraw_address' => 'required',
             'payment_password' => 'required',
         ], [
-            'amount.required' => '充值金额不能为空',
-            'amount.min' => '充值金额要大于0',
+            'amount.required' => '提现金额不能为空',
+            'amount.min' => '提现金额至少为1',
             'withdraw_address.required' => '提现地址不能为空',
             'payment_password.required' => '支付密码不能为空',
         ]);
