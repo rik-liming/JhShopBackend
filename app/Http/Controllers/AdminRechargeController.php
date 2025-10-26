@@ -31,9 +31,7 @@ class AdminRechargeController extends Controller
         $pageSize = $request->input('page_size', 10);  // 每页显示的记录数，默认是10条
         $user_id = $request->input('user_id', '');  // 搜索关键词，默认空字符串
 
-        // 构建查询
-        $query = Recharge::where('status', '!=', -1);  // 过滤掉status为-1的
-
+        $query = Recharge::query()->orderBy('id', 'desc');
         if ($user_id) {
             $query->where('user_id', $user_id);
         }
@@ -82,6 +80,7 @@ class AdminRechargeController extends Controller
         $newRecharge = DB::transaction(function() use ($recharge, $userAccount) {
 
             $financeRecord = FinancialRecord::where('reference_id', $recharge->id)
+                ->where('transaction_type', 'recharge')
                 ->first();
 
             // 如果通过审核，需要进行变动操作

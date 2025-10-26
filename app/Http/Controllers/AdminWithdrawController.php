@@ -32,7 +32,7 @@ class AdminWithdrawController extends Controller
         $user_id = $request->input('user_id', '');  // 搜索关键词，默认空字符串
 
         // 构建查询
-        $query = Withdraw::where('status', '!=', -1);  // 过滤掉status为-1的
+        $query = Withdraw::query()->orderBy('id', 'desc');
 
         if ($user_id) {
             $query->where('user_id', $user_id);
@@ -74,12 +74,9 @@ class AdminWithdrawController extends Controller
             $withdraw->status = $status;
         }
 
-        $userAccount = null;
-        if ($status === 1) {
-            $userAccount = UserAccount::where('user_id', $withdraw->user_id)->first();
-            if (!$userAccount) {
-                return ApiResponse::error(ApiCode::USER_ACCOUNT_NOT_FOUND);
-            }
+        $userAccount = UserAccount::where('user_id', $withdraw->user_id)->first();
+        if (!$userAccount) {
+            return ApiResponse::error(ApiCode::USER_ACCOUNT_NOT_FOUND);
         }
         
         $newWithdraw = DB::transaction(function() use ($withdraw, $userAccount) {
@@ -87,6 +84,7 @@ class AdminWithdrawController extends Controller
             $totalExpense = bcadd($withdraw->amount, $withdraw->fee, 2);
 
             $financeRecord = FinancialRecord::where('reference_id', $withdraw->id)
+                ->where('transaction_type', 'withdraw')
                 ->first();
 
             // 如果通过审核，需要进行变动操作
@@ -98,7 +96,6 @@ class AdminWithdrawController extends Controller
 
                 // 注意，available余额是不用变动的，因为已经冻结过了
                 $userAccount->total_balance = $balanceAfter;
-                $userAccount->save();
 
                 // 更新信息
                 $withdraw->balance_before = $balanceBefore;
@@ -107,11 +104,10 @@ class AdminWithdrawController extends Controller
                 // 更新财务变动
                 $financeRecord->balance_before = $balanceBefore;
                 $financeRecord->balance_after = $balanceAfter;
-                $financeRecord->actual_amount = $totalExpense;
-            } else if ($recharge->status === -1) {
+                $financeRecord->actual_amount = -$totalExpense;
+            } else if ($withdraw->status === -1) {
                 // 驳回需要把冻结的可用资金释放
                 $userAccount->available_balance = bcadd($userAccount->available_balance, $totalExpense, 2);
-                $userAccount->save();
 
                 // 更新财务变动
                 $financeRecord->balance_before = $userAccount->total_balance;
@@ -120,6 +116,8 @@ class AdminWithdrawController extends Controller
             }
 
             // 无论是否通过，都需要更新充值信息
+            $userAccount->save();
+
             $withdraw->save();
 
             $financeRecord->save();

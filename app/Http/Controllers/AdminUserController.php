@@ -47,7 +47,8 @@ class AdminUserController extends Controller
                 'status',
                 'created_at',
             )
-            ->where('status', '!=', -1);  // 过滤掉status为-1的用户
+            ->where('status', '!=', -1)
+            ->orderBy('id', 'desc');
 
         // 如果有传入 id 参数，进行模糊搜索
         if ($id) {
