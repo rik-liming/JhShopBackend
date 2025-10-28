@@ -19,6 +19,7 @@ class Order extends Authenticatable
         'display_order_id',
         'buy_transaction_id',
         'sell_transaction_id',
+        'type',
         'amount',
         'payment_method',
         'buy_user_id',

@@ -53,6 +53,50 @@ class UserController extends Controller
     }
 
     /**
+     * 获取当前用户账户信息
+     */
+    public function getAccountInfo(Request $request)
+    {
+        // 从中间件获取的用户ID
+        $userId = $request->user_id_from_token ?? null;
+
+        if (!$userId) {
+            return ApiResponse::error(ApiCode::USER_NOT_FOUND);
+        }
+
+        $userAccount = UserAccount::select(
+            'total_balance',
+            'available_balance',
+        )
+        ->where('user_id', $userId)
+        ->first();
+
+        return ApiResponse::success([
+            'account' => $userAccount,
+        ]);
+    }
+
+    public function autoBuyerVerify(Request $request)
+    {
+        $userId = $request->auto_buyer_id ?? null;
+
+        if (!$userId) {
+            return ApiResponse::error(ApiCode::USER_AUTO_BUYER_VERIFY_FAIL);
+        }
+
+        $autoBuyer = User::where('id', $userId)
+            ->where('role', 'autoBuyer')
+            ->where('status', 1)
+            ->first();
+
+        if (!$autoBuyer) {
+            return ApiResponse::error(ApiCode::USER_AUTO_BUYER_VERIFY_FAIL);
+        }
+
+        return ApiResponse::success([]);
+    }
+
+    /**
      * 更新用户密码
      */
     public function updatePassword(Request $request)

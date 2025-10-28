@@ -25,9 +25,15 @@ Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/verify_otp', [AuthController::class, 'verifyOtp']);
 Route::post('/logout', [AuthController::class, 'logout']);
+Route::get('/config/info', [ConfigController::class, 'getConfigInfo']);
+Route::get('/user/auto_buyer/verify', [UserController::class, 'autoBuyerVerify']);
+Route::post('/order/auto_buyer', [OrderController::class, 'autoBuyerCreate']);
+Route::get('/order/auto_buyer/detail', [OrderController::class, 'getOrderDetail']);
+Route::post('/order/auto_buyer/confirm', [OrderController::class, 'autoBuyerOrderConfirm']);
 
 Route::middleware(['check.api.token'])->group(function () {
     Route::get('/user/info', [UserController::class, 'getUserInfo']);
+    Route::get('/user/account/info', [UserController::class, 'getAccountInfo']);
     Route::put('/user/password', [UserController::class, 'updatePassword']);
 
     Route::get('/payment_method/my', [PaymentMethodController::class, 'getMyList']);
@@ -39,8 +45,6 @@ Route::middleware(['check.api.token'])->group(function () {
     Route::post('/order_listing', [OrderListingController::class, 'createOrderListing']);
     Route::get('/order_listing/page', [OrderListingController::class, 'getOrderListingByPage']);
     Route::get('/order_listing', [OrderListingController::class, 'getOrderListing']);
-
-    Route::get('/config/info', [ConfigController::class, 'getConfigInfo']);
 
     Route::post('/order', [OrderController::class, 'create']);
     Route::get('/order/buyer/my', [OrderController::class, 'getMyBuyerOrders']);

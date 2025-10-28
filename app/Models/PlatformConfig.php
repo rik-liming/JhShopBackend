@@ -24,9 +24,14 @@ class PlatformConfig extends Authenticatable
         'exchange_rate_wechat',
         'exchange_rate_bank',
         'advertisement_text',
+        'remote_order_config',
     ];
 
     protected $hidden = [
+    ];
+
+    protected $casts = [
+        'remote_order_config' => 'array', // 自动将 JSON 转为数组
     ];
 
     /**

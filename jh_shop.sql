@@ -140,6 +140,7 @@ CREATE TABLE `jh_platform_config` (
   `exchange_rate_wechat` decimal(5,2) NOT NULL DEFAULT '0.00' COMMENT '微信兑换比率',
   `exchange_rate_bank` decimal(5,2) NOT NULL DEFAULT '0.00' COMMENT '银行卡兑换比率',
   `advertisement_text` varchar(1024) NULL COMMENT '平台广告语',
+  `remote_order_config` JSON NULL COMMENT '远程下单扩展配置（JSON 格式）',
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='平台配置表';
@@ -148,8 +149,8 @@ CREATE TABLE `jh_platform_config` (
 -- 转存表中的数据 `jh_platform_config`
 --
 
-INSERT INTO `jh_platform_config` (`id`, `payment_address`, `payment_qr_code`, `transfer_fee`, `withdrawl_fee`, `exchange_rate_platform`, `exchange_rate_alipay`, `exchange_rate_wechat`, `exchange_rate_bank`, `advertisement_text`, `created_at`, `updated_at`) VALUES
-(1, 'jjusfafxsdfsjeexxseeed', '', '2.00', '2.00', '7.25', '7.24', '7.25', '7.26', 'Welcome to our platform!', '2025-10-14 20:51:37', '2025-10-14 20:51:37');
+INSERT INTO `jh_platform_config` (`id`, `payment_address`, `payment_qr_code`, `transfer_fee`, `withdrawl_fee`, `exchange_rate_platform`, `exchange_rate_alipay`, `exchange_rate_wechat`, `exchange_rate_bank`, `advertisement_text`, `remote_order_config`, `created_at`, `updated_at`) VALUES
+(1, 'jjusfafxsdfsjeexxseeed', '', '2.00', '2.00', '7.25', '7.24', '7.25', '7.26', 'Welcome to our platform!', '{"openMarkets": ["alipay", "wechat", "bank"],"amountOptions": [500,1000,2000]}', '2025-10-14 20:51:37', '2025-10-14 20:51:37');
 
 -- --------------------------------------------------------
 
@@ -224,7 +225,7 @@ CREATE TABLE `jh_user_financial_record` (
   `actual_amount` decimal(15,2) NOT NULL COMMENT '实际变动金额（可以是负值或正值，加上了手续费）',
   `balance_before` decimal(15,2) NOT NULL COMMENT '变动前的账户余额',
   `balance_after` decimal(15,2) NOT NULL COMMENT '变动后的账户余额',
-  `transaction_type` enum('recharge','transfer_send','transfer_receive','withdraw','order_buy','order_sell') NOT NULL COMMENT '变动类型：recharge（充值）、transfer_send（转账-转出）、transfer_receive（转账-转入）、withdraw（提现）、order（订单）',
+  `transaction_type` enum('recharge','transfer_send','transfer_receive','withdraw','order_buy','order_auto_buy','order_sell','order_auto_sell') NOT NULL COMMENT '变动类型：recharge（充值）、transfer_send（转账-转出）、transfer_receive（转账-转入）、withdraw（提现）、order（订单）',
   `reference_id` int(10) UNSIGNED DEFAULT NULL COMMENT '关联ID，比如转账的记录ID，订单ID',
   `display_reference_id` varchar(255) NOT NULL COMMENT '关联的展示ID, 用于展示的充值单号（比如202501010001）',
   `description` text COMMENT '变动描述（可选）',
@@ -244,6 +245,7 @@ CREATE TABLE `jh_user_order` (
   `display_order_id` varchar(255) NOT NULL COMMENT '用于展示的订单号（比如20250101_0001）',
   `buy_transaction_id` varchar(255) DEFAULT NULL COMMENT '买家的交易ID（例如，支付流水号、转账流水号）',
   `sell_transaction_id` varchar(255) DEFAULT NULL COMMENT '卖家的交易ID（例如，支付流水号、转账流水号）',
+  `type` enum('normal','auto') NOT NULL DEFAULT 'normal' COMMENT 'normal: 普通订单, auto: 自动化订单',
   `amount` decimal(15,2) UNSIGNED NOT NULL COMMENT '购买数量',
   `payment_method` enum('bank','alipay','wechat') NOT NULL COMMENT '支付方式',
   `buy_user_id` int(10) UNSIGNED NOT NULL COMMENT '购买用户ID（外键关联 jh_user 表）',
