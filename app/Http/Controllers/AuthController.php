@@ -79,6 +79,7 @@ class AuthController extends Controller
             return ApiResponse::error(ApiCode::USER_ILLEGAL);
         }
 
+        $firstBindSecret = false;
         $google2fa = new Google2FA();
         // 判断是否已绑定Google Authenticator
         if (!$user->two_factor_secret) {
@@ -87,10 +88,12 @@ class AuthController extends Controller
 
             $user->two_factor_secret = $secret;
             $user->save();
+
+            $firstBindSecret = true;
         }
 
-        // 以是否成功登录过，作为是否绑定过的依据
-        if (!$user->last_login_time) {
+        // 以是否成功登录过，或者是否新生成密钥，作为是否绑定过的依据
+        if (!$user->last_login_time || $firstBindSecret) {
             $qrCodeUrl = $google2fa->getQRCodeUrl(
                 'JhShop',
                 $user->email,

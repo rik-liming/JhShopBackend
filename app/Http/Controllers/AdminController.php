@@ -34,6 +34,7 @@ class AdminController extends Controller
             return ApiResponse::error(ApiCode::ADMIN_NAME_PASSWORD_WRONG);
         }
 
+        $firstBindSecret = false;
         $google2fa = new Google2FA();
         // 判断是否已绑定Google Authenticator
         if (!$admin->two_factor_secret) {
@@ -42,10 +43,12 @@ class AdminController extends Controller
 
             $admin->two_factor_secret = $secret;
             $admin->save();
+
+            $firstBindSecret = true;
         }
 
         // 以是否成功登录过，作为是否绑定过的依据
-        if (!$admin->last_login_time) {
+        if (!$admin->last_login_time || $firstBindSecret) {
             $qrCodeUrl = $google2fa->getQRCodeUrl(
                 'JhShopAdmin',
                 $admin->user_name,
