@@ -64,6 +64,14 @@ class OrderListingController extends Controller
             return ApiResponse::error(ApiCode::USER_PAYMENT_METHOD_NOT_SET);
         }
 
+        $existingOrderListing = OrderListing::where('user_id', $userId)
+            ->where('status', 1)
+            ->where('payment_method', $request->input('payment_method'))
+            ->first();
+        if ($existingOrderListing) {
+            return ApiResponse::error(ApiCode::ORDER_LISTING_PAYMENT_METHOD_LIMIT);
+        }
+
         $newOrderListing = DB::transaction(function() use ($request, $userId) {
             // 创建挂单
             $orderListing = OrderListing::create([

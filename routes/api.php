@@ -22,6 +22,7 @@ use App\Http\Controllers\AdminTransferController;
 use App\Http\Controllers\AdminOrderListingController;
 use App\Http\Controllers\AdminStatController;
 use App\Http\Controllers\AdminOrderController;
+use App\Http\Controllers\AdminConfigController;
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
@@ -91,6 +92,9 @@ Route::middleware(['check.admin.token'])->group(function () {
     Route::get('/admin/order/page', [AdminOrderController::class, 'getOrderByPage']);
 
     Route::get('/admin/stat/dashboard', [AdminStatController::class, 'getDashboard']);
+
+    Route::get('/admin/config/info', [AdminConfigController::class, 'getConfigInfo']);
+    Route::put('/admin/config', [AdminConfigController::class, 'updateConfig']);
 });
 
 // Route::middleware('auth:sanctum')->group(function () {

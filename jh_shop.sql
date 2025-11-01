@@ -262,7 +262,7 @@ CREATE TABLE `jh_user_order` (
   `exchange_rate` decimal(15,2) UNSIGNED NOT NULL COMMENT '兑换比率（币价）',
   `total_price` decimal(15,2) UNSIGNED NOT NULL COMMENT '购买总金额',
   `total_cny_price` decimal(15,2) UNSIGNED NOT NULL COMMENT '购买总金额（人民币）',
-  `status` tinyint(1) NOT NULL DEFAULT '1' COMMENT '订单状态：0 买家未支付; 1 已支付待卖家确认; 2 卖家已确认；-1 超时卖家未确认;',
+  `status` tinyint(1) NOT NULL DEFAULT '0' COMMENT '订单状态：-1 已删除; 0 买家未支付; 1 已支付待卖家确认; 2 卖家已确认；3 超时取消； 4 争议；5 ；争议通过；6 争议撤单',
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '订单创建时间',
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '订单更新时间'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户订单表';

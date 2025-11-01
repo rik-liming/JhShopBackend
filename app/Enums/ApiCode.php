@@ -34,6 +34,7 @@ class ApiCode
     const ORDER_NOT_FOUND = 20104;
     const ORDER_CONFIRM_FAIL = 20105;
     const ORDER_LISTING_MATCH_FAIL = 20106;
+    const ORDER_LISTING_PAYMENT_METHOD_LIMIT = 20107;
 
     // 交易相关
     const TRANSFER_NOT_FOUND = 20200;
@@ -75,6 +76,7 @@ class ApiCode
         self::ORDER_NOT_FOUND => '订单不存在',
         self::ORDER_CONFIRM_FAIL => '订单确认失败',
         self::ORDER_LISTING_MATCH_FAIL => '订单匹配失败',
+        self::ORDER_LISTING_PAYMENT_METHOD_LIMIT => '超出挂单限制',
 
         self::TRANSFER_NOT_FOUND => '转账记录不存在',
         self::RECHARGE_NOT_FOUND => '充值记录不存在',

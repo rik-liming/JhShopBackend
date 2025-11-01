@@ -18,6 +18,8 @@ use App\Models\User;
 use App\Models\Recharge;
 use App\Models\UserAccount;
 
+use App\Events\UserRoleChanged;
+
 class AdminUserController extends Controller
 {
     /**
@@ -125,24 +127,41 @@ class AdminUserController extends Controller
         if ($realName) {
             $user->real_name = $realName;
         }
+
+        $hasRoleChanged = false;
         if ($role) {
-            $user->role = $role;
-            // 如果变更为代理，那么rootAgent就是自己；如果是商家，rootAgent就是代理
-            if ($role == 'agent' && !$user->invite_code) {
-                $user->invite_code = $this->generateUniqueInviteCode($role);
-                $user->root_agent_id = $user->id;
-                $user->root_agent_name = $user->user_name;
-            } else if ($role == 'seller') {
-                $user->root_agent_id = $user->inviter_id;
-                $user->root_agent_name = $user->inviter_name;
+            if ($user->role !== $role) {
+                $hasRoleChanged = true;
+
+                $user->role = $role;
+                // 如果变更为代理，那么rootAgent就是自己；如果是商家，rootAgent就是代理
+                if ($role == 'agent' && !$user->invite_code) {
+                    $user->invite_code = $this->generateUniqueInviteCode($role);
+                    $user->root_agent_id = $user->id;
+                    $user->root_agent_name = $user->user_name;
+                } else if ($role == 'seller') {
+                    $user->root_agent_id = $user->inviter_id;
+                    $user->root_agent_name = $user->inviter_name;
+                }
             }
         }
+
+        $hasStatusChanged = false;
         if ($status !== $user->status) {
             $user->status = $status;
+            $hasStatusChanged = true;
         }
 
         // 保存更新
         $user->save();
+
+        // 处理状态变更，发推送
+        if ($hasRoleChanged) {
+            event(new UserRoleChanged($user->id, $user->role));
+        }
+        // if ($hasStatusChanged) {
+
+        // }
 
         return ApiResponse::success([
             'user' => $user
