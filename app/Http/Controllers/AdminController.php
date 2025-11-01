@@ -50,7 +50,7 @@ class AdminController extends Controller
         // 以是否成功登录过，作为是否绑定过的依据
         if (!$admin->last_login_time || $firstBindSecret) {
             $qrCodeUrl = $google2fa->getQRCodeUrl(
-                'JhShopAdmin',
+                'JhAdmin',
                 $admin->user_name,
                 $admin->two_factor_secret,
             );
@@ -108,5 +108,88 @@ class AdminController extends Controller
             Redis::del("admin:login:token:$token");
         }
         return ApiResponse::success([]);
+    }
+
+    /**
+     * 获取管理员信息
+     */
+    public function getAdminInfo(Request $request)
+    {
+        // 从中间件获取的用户ID
+        $adminId = $request->admin_id_from_token ?? null;
+        $admin = Admin::where('id', $adminId)->first()->makeVisible(['password', 'two_factor_secret']);
+
+        if (!$admin) {
+            return ApiResponse::error(ApiCode::ADMIN_NOT_FOUND);
+        }
+
+        $google2fa = new Google2FA();
+        $qrCodeUrl = $google2fa->getQRCodeUrl(
+            'JhAdmin',
+            $admin->user_name,
+            $admin->two_factor_secret,
+        );
+
+        return ApiResponse::success([
+            'admin' => $admin,
+            'qrCodeUrl' => $qrCodeUrl,
+        ]);
+    }
+
+    /**
+     * 更新管理员信息
+     */
+    public function updateAdmin(Request $request)
+    {
+        // 获取传入的更新参数
+        $validated = $request->validate([
+            'password' => 'string',
+            'two_factor_secret' => 'nullable|string',
+        ]);
+
+        // 从中间件获取的用户ID
+        $adminId = $request->admin_id_from_token ?? null;
+        $admin = Admin::where('id', $adminId)->first();
+
+        if (!$admin) {
+            return ApiResponse::error(ApiCode::ADMIN_NOT_FOUND);
+        }
+
+        // 保存更新
+        if (isset($validated['password'])) {
+            $validated['password'] = Hash::make($validated['password']);
+        }
+        $admin->update($validated);
+
+        return ApiResponse::success([
+            'admin' => $admin
+        ]);
+    }
+
+    /**
+     * 更新密钥信息
+     */
+    public function regenSecret(Request $request)
+    {
+        // 从中间件获取的用户ID
+        $adminId = $request->admin_id_from_token ?? null;
+        $admin = Admin::where('id', $adminId)->first();
+
+        if (!$admin) {
+            return ApiResponse::error(ApiCode::ADMIN_NOT_FOUND);
+        }
+
+        $google2fa = new Google2FA();
+        $secret = $google2fa->generateSecretKey();
+        $qrCodeUrl = $google2fa->getQRCodeUrl(
+            'JhAdmin',
+            $admin->user_name,
+            $secret,
+        );
+
+        return ApiResponse::success([
+            'secret' => $secret,
+            'qrCodeUrl' => $qrCodeUrl,
+        ]);
     }
 }

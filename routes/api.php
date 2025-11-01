@@ -95,6 +95,10 @@ Route::middleware(['check.admin.token'])->group(function () {
 
     Route::get('/admin/config/info', [AdminConfigController::class, 'getConfigInfo']);
     Route::put('/admin/config', [AdminConfigController::class, 'updateConfig']);
+
+    Route::get('/admin/info', [AdminController::class, 'getAdminInfo']);
+    Route::put('/admin', [AdminController::class, 'updateAdmin']);
+    Route::post('/admin/secret/regen', [AdminController::class, 'regenSecret']);
 });
 
 // Route::middleware('auth:sanctum')->group(function () {
