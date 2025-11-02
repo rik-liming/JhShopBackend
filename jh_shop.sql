@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- 主机： localhost
--- 生成日期： 2025-10-14 20:52:28
+-- 生成日期： 2025-11-02 07:36:23
 -- 服务器版本： 5.7.44-log
 -- PHP 版本： 8.0.26
 
@@ -139,8 +139,8 @@ CREATE TABLE `jh_platform_config` (
   `exchange_rate_alipay` decimal(5,2) NOT NULL DEFAULT '0.00' COMMENT '支付宝兑换比率',
   `exchange_rate_wechat` decimal(5,2) NOT NULL DEFAULT '0.00' COMMENT '微信兑换比率',
   `exchange_rate_bank` decimal(5,2) NOT NULL DEFAULT '0.00' COMMENT '银行卡兑换比率',
-  `advertisement_text` varchar(1024) NULL COMMENT '平台广告语',
-  `remote_order_config` JSON NULL COMMENT '远程下单扩展配置（JSON 格式）',
+  `advertisement_text` varchar(1024) DEFAULT NULL COMMENT '平台广告语',
+  `remote_order_config` json DEFAULT NULL COMMENT '远程下单扩展配置（JSON 格式）',
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='平台配置表';
@@ -150,7 +150,7 @@ CREATE TABLE `jh_platform_config` (
 --
 
 INSERT INTO `jh_platform_config` (`id`, `payment_address`, `payment_qr_code`, `transfer_fee`, `withdrawl_fee`, `exchange_rate_platform`, `exchange_rate_alipay`, `exchange_rate_wechat`, `exchange_rate_bank`, `advertisement_text`, `remote_order_config`, `created_at`, `updated_at`) VALUES
-(1, 'jjusfafxsdfsjeexxseeed', '', '2.00', '2.00', '7.25', '7.24', '7.25', '7.26', 'Welcome to our platform!', '{"openMarkets": ["alipay", "wechat", "bank"],"amountOptions": [500,1000,2000]}', '2025-10-14 20:51:37', '2025-10-14 20:51:37');
+(1, 'jjusfafxsdfsjeexxseeed', '', '2.00', '2.00', '7.25', '7.24', '7.25', '7.26', 'Welcome to our platform!', '{\"openMarkets\": [\"alipay\", \"wechat\", \"bank\"], \"amountOptions\": [500, 1000, 2000]}', '2025-10-14 20:51:37', '2025-10-14 20:51:37');
 
 -- --------------------------------------------------------
 
@@ -211,6 +211,23 @@ CREATE TABLE `jh_user_account` (
 -- --------------------------------------------------------
 
 --
+-- 表的结构 `jh_user_daily_report`
+--
+
+CREATE TABLE `jh_user_daily_report` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `report_date` date NOT NULL COMMENT '统计日期',
+  `user_id` bigint(20) UNSIGNED NOT NULL COMMENT '用户ID',
+  `type` enum('buyer','autoBuyer','agent') NOT NULL COMMENT '报表类型: buyer=买家, autoBuyer=自动化买家, agent=代理',
+  `order_count` int(10) UNSIGNED NOT NULL DEFAULT '0' COMMENT '订单数量',
+  `total_amount` decimal(18,2) NOT NULL DEFAULT '0.00' COMMENT '订单总额',
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户日报表';
+
+-- --------------------------------------------------------
+
+--
 -- 表的结构 `jh_user_financial_record`
 --
 
@@ -228,6 +245,7 @@ CREATE TABLE `jh_user_financial_record` (
   `transaction_type` enum('recharge','transfer_send','transfer_receive','withdraw','order_buy','order_auto_buy','order_sell','order_auto_sell') NOT NULL COMMENT '变动类型：recharge（充值）、transfer_send（转账-转出）、transfer_receive（转账-转入）、withdraw（提现）、order（订单）',
   `reference_id` int(10) UNSIGNED DEFAULT NULL COMMENT '关联ID，比如转账的记录ID，订单ID',
   `display_reference_id` varchar(255) NOT NULL COMMENT '关联的展示ID, 用于展示的充值单号（比如202501010001）',
+  `status` tinyint(1) NOT NULL DEFAULT '0' COMMENT '状态：-1 删除；0 默认；1 进行中；2 已完结',
   `description` text COMMENT '变动描述（可选）',
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '变动时间',
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '状态更新时间'
@@ -525,6 +543,13 @@ ALTER TABLE `jh_user_account`
   ADD KEY `fk_user_account_user_id` (`user_id`);
 
 --
+-- 表的索引 `jh_user_daily_report`
+--
+ALTER TABLE `jh_user_daily_report`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `report_date` (`report_date`,`user_id`,`type`);
+
+--
 -- 表的索引 `jh_user_financial_record`
 --
 ALTER TABLE `jh_user_financial_record`
@@ -629,6 +654,12 @@ ALTER TABLE `jh_user`
 --
 ALTER TABLE `jh_user_account`
   MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '账户ID';
+
+--
+-- 使用表AUTO_INCREMENT `jh_user_daily_report`
+--
+ALTER TABLE `jh_user_daily_report`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- 使用表AUTO_INCREMENT `jh_user_financial_record`

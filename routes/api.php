@@ -23,6 +23,7 @@ use App\Http\Controllers\AdminOrderListingController;
 use App\Http\Controllers\AdminStatController;
 use App\Http\Controllers\AdminOrderController;
 use App\Http\Controllers\AdminConfigController;
+use App\Http\Controllers\AdminReportController;
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
@@ -99,6 +100,9 @@ Route::middleware(['check.admin.token'])->group(function () {
     Route::get('/admin/info', [AdminController::class, 'getAdminInfo']);
     Route::put('/admin', [AdminController::class, 'updateAdmin']);
     Route::post('/admin/secret/regen', [AdminController::class, 'regenSecret']);
+
+    Route::get('/admin/report/list', [AdminReportController::class, 'getReportByTime']);
+    Route::post('/admin/report/daily', [AdminReportController::class, 'generateTodayReport']);
 });
 
 // Route::middleware('auth:sanctum')->group(function () {
