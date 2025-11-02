@@ -17,6 +17,7 @@ use App\Models\User;
 use App\Models\UserAccount;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Redis;
+use App\Helpers\MessageHelper;
 
 class OrderController extends Controller
 {
@@ -169,6 +170,23 @@ class OrderController extends Controller
             // 提交事务
             DB::commit();
 
+            // 分别向买家和卖家推送消息
+            MessageHelper::pushMessage($order->buy_user_id, [
+                'transaction_id' => $order->buy_transaction_id,
+                'transaction_type' => 'order_buy',
+                'reference_id' => $order->id,
+                'title' => '',
+                'content' => '',
+            ]);
+
+            MessageHelper::pushMessage($order->sell_user_id, [
+                'transaction_id' => $order->sell_transaction_id,
+                'transaction_type' => 'order_sell',
+                'reference_id' => $order->id,
+                'title' => '',
+                'content' => '',
+            ]);
+
             return ApiResponse::success([
                 'order' => $order,
             ]);
@@ -305,152 +323,6 @@ class OrderController extends Controller
             // 创建买卖双方的交易记录
             $buyerTransaction = $this->generateTransaction($order, 'order_auto_buy');
             $sellerTransaction = $this->generateTransaction($order, 'order_auto_sell');
-
-            // 记录以便反查
-            $order->buy_transaction_id = $buyerTransaction->transaction_id;
-            $order->sell_transaction_id = $sellerTransaction->transaction_id;
-            $order->save();
-
-            // 更新挂单的剩余库存
-            $orderListing->remain_amount = bcsub($orderListing->remain_amount, $amount, 2);
-            // 卖完自动下架
-            if ($orderListing->remain_amount <= 0) {
-                $orderListing->status = 0;
-            }
-            $orderListing->save();
-
-            // 提交事务
-            DB::commit();
-
-            return ApiResponse::success([
-                'order' => $order,
-            ]);
-        } catch (\Exception $e) {
-            \Log::error('An error occurred: ' . $e->getMessage());
-            // 回滚事务
-            DB::rollBack();
-            return ApiResponse::error(ApiCode::ORDER_CREATE_FAIL);
-        }
-    }
-
-    public function autoBuyerConfirm(Request $request)
-    {
-        $request->validate([
-            'order_listing_id' => 'required',
-            'auto_buyer_id' => 'required',
-            'cny_amount' => 'required|numeric|min:1', // 下单金额必须大于 0
-            'account_name' => 'required|string', // 买家账户名
-            'account_number' => 'required|string', // 买家账户号码
-        ], [
-            'order_listing_id.required' => '挂单Id不能为空',
-            'auto_buyer_id.required' => '购买人Id不能为空',
-            'cny_amount.required' => '购买数量不能为空',
-            'cny_amount.min' => '购买数量不能少于1',
-            'account_name.required' => '购买人姓名不能为空',
-            'account_number.required' => '购买人账户不能为空',
-        ]);
-
-        $userId = $request->auto_buyer_id;
-
-        if (!$userId) {
-            return ApiResponse::error(ApiCode::USER_AUTO_BUYER_VERIFY_FAIL);
-        }
-
-        $autoBuyer = User::where('id', $userId)
-            ->where('role', 'autoBuyer')
-            ->where('status', 1)
-            ->first();
-
-        if (!$autoBuyer) {
-            return ApiResponse::error(ApiCode::USER_AUTO_BUYER_VERIFY_FAIL);
-        }
-
-        // 获取挂单
-        $orderListing = OrderListing::find($request->order_listing_id);
-        if (!$orderListing) {
-            return ApiResponse::error(ApiCode::ORDER_LISTING_NOT_FOUND);
-        }
-
-        // 需要获取当前比率
-        $config = PlatformConfig::first();
-        if (!$config) {
-            return ApiResponse::error(ApiCode::CONFIG_NOT_FOUND);
-        }
-        
-        $currentExchangeRate = 7.25;
-        switch ($orderListing->payment_method) {
-            case 'alipay':
-                $currentExchangeRate = $config->exchange_rate_alipay;
-                break;
-            case 'wechat':
-                $currentExchangeRate = $config->exchange_rate_wechat;
-                break;
-            case 'bank':
-                $currentExchangeRate = $config->exchange_rate_bank;
-                break;
-            default:
-                break;
-        }
-
-        // 计算得到cny对应的amount
-        $amount = bcdiv($request->cny_amount, $currentExchangeRate, 2);
-
-        // 检查卖家支付信息
-        $paymentMethod = UserPaymentMethod::where('status', 1)
-            ->where('user_id', $orderListing->user_id)
-            ->where('payment_method', $orderListing->payment_method)
-            ->first();
-        if (!$paymentMethod) {
-            return ApiResponse::error(ApiCode::USER_PAYMENT_METHOD_NOT_SET);
-        }
-
-        // 检查库存是否足够
-        if ($orderListing->remain_amount < $amount) {
-            return ApiResponse::error(ApiCode::ORDER_LISTING_AMOUNT_NOT_ENOUGH);
-        }
-
-        // 检查是否满足最低购买需求
-        if ($orderListing->min_sale_amount > $amount) {
-            return ApiResponse::error(ApiCode::ORDER_LISTING_MIN_SALE_AMOUNT_LIMIT);
-        }
-
-        // 开启事务，确保数据一致性
-        DB::beginTransaction();
-
-        try {
-
-            // display order id
-            $date = Carbon::now()->format('YmdHis');
-            $randomNumber = str_pad(rand(0, 9999), 4, '0', STR_PAD_LEFT); // 生成 4 位随机数，填充 0
-            $display_order_id = "${date}${randomNumber}";
-
-            // 创建订单记录
-            $order = new Order([
-                'order_listing_id' => $orderListing->id,
-                'display_order_id' => $display_order_id,
-                'amount' => $amount,
-                'payment_method' => $orderListing->payment_method,
-                'buy_user_id' => $userId,
-                'buy_account_name' => $request->account_name,
-                'buy_account_number' => $request->account_number,
-                'buy_bank_name' => $request->bank_name ?? '',
-                'buy_issue_bank_name' => $request->issue_bank_name ?? '',
-                'sell_user_id' => $orderListing->user_id,
-                'sell_account_name' => $paymentMethod->account_name,
-                'sell_account_number' => $paymentMethod->account_number,
-                'sell_qr_code' => $paymentMethod->qr_code,
-                'sell_bank_name' => $paymentMethod->bank_name,
-                'sell_issue_bank_name' => $paymentMethod->issue_bank_name,
-                'exchange_rate' => $currentExchangeRate,
-                'total_price' => $amount,
-                'total_cny_price' => $request->cny_amount,
-                'status' => 0, // 初始状态为待支付
-            ]);
-            $order->save();
-
-            // 创建买卖双方的交易记录
-            $buyerTransaction = $this->generateTransaction($order, 'buyer');
-            $sellerTransaction = $this->generateTransaction($order, 'seller');
 
             // 记录以便反查
             $order->buy_transaction_id = $buyerTransaction->transaction_id;
@@ -828,7 +700,7 @@ class OrderController extends Controller
         ]);
     }
 
-    public function autoBuyerOrderConfirm(Request $request)
+    public function autoBuyerConfirm(Request $request)
     {
         // 验证输入参数
         $request->validate([

@@ -21,7 +21,7 @@ class CheckApiToken
         $userId = Redis::get("login:token:$token");
 
         // 滑动续期 10 分钟
-        Redis::expire("login:token:$token", 3600);
+        Redis::expire("login:token:$token", 1800);
 
         // 将 userId 放到 request 中，方便后续使用
         $request->merge(['user_id_from_token' => $userId]);

@@ -192,4 +192,54 @@ class AdminController extends Controller
             'qrCodeUrl' => $qrCodeUrl,
         ]);
     }
+
+    /**
+     * 分页获取用户信息
+     */
+    public function getAdminByPage(Request $request)
+    {
+        // 获取分页参数
+        $page = $request->input('page', 1);  // 当前页，默认是第1页
+        $pageSize = $request->input('page_size', 10);  // 每页显示的记录数，默认是10条
+
+        // 获取关键词和角色过滤参数
+        $user_name = $request->input('user_name', '');  // 搜索关键词，默认空字符串
+        $role = $request->input('role', '');  // 角色，默认空字符串
+
+        // 构建查询
+        $query = Admin::select(
+                'id',
+                'user_name',
+                'role',
+                'status',
+                'created_at',
+            )
+            ->where('status', '!=', -1)
+            ->orderBy('id', 'desc');
+
+        // 如果有传入 id 参数，进行模糊搜索
+        if ($user_name) {
+            $query->where('user_name', $user_name);
+        }
+
+        // 如果有传入 role 参数，按角色过滤
+        if ($role) {
+            $query->where('role', $role);
+        }
+
+        // 获取符合条件的用户总数
+        $totalCount = $query->count();
+
+        // 分页
+        $admins = $query->skip(($page - 1) * $pageSize)  // 计算分页的偏移量
+                    ->take($pageSize)  // 每页获取指定数量的用户
+                    ->get();
+
+        return ApiResponse::success([
+            'total' => $totalCount,  // 总记录数
+            'current_page' => $page,  // 当前页
+            'page_size' => $pageSize,  // 每页记录数
+            'admins' => $admins,  // 当前页的用户列表
+        ]);
+    }
 }

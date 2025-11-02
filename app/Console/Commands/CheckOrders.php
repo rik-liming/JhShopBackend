@@ -40,10 +40,10 @@ class CheckOrders extends Command
         if (empty($orderIds)) {
             return;
 		}
-		
-		// 批量更新状态为 3（超时未处理）
+
+		// 分别取消各笔订单，回滚数据
 		foreach ($orderIds as $orderId) {
-			$count = Order::whereIn('id', $orderIds)->update(['status' => 3]);
+			$this->doCancelOrderLogic($orderIds);
 		}
 
         // 写入日志
@@ -70,4 +70,27 @@ class CheckOrders extends Command
         // 写入日志
         \Log::info("[CronCheckOrders], {$count} orders marked as argued at " . now(), ['order_ids' => $orderIds]);
 	}
+
+	protected doCancelOrderLogic($orderId) {
+		DB::beginTransaction();
+        try {
+			$order = Order::where('id', $orderIds)->first();
+			if ($order->status !== 0) {
+				return;
+			}
+
+			// 变更订单状态
+			$order->status = 3;
+			$order->save();
+
+			// 恢复挂单状态，todo
+
+            DB::commit();
+            return ['success' => true, 'date' => $date];
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            // report($e);
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+	} 
 }

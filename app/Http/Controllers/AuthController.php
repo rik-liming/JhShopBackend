@@ -137,7 +137,7 @@ class AuthController extends Controller
 
         // OTP验证通过后，生成Token并存入Redis
         $token = Str::random(64);
-        Redis::setex("login:token:$token", 3600, $user->id); // 600秒 = 10分钟
+        Redis::setex("login:token:$token", 1800, $user->id); // 600秒 = 10分钟
 
         return ApiResponse::success([
             'token' => $token,
