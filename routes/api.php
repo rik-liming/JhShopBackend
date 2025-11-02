@@ -38,7 +38,7 @@ Route::get('/user/auto_buyer/verify', [UserController::class, 'autoBuyerVerify']
 Route::post('/order/auto_buyer', [OrderController::class, 'autoBuyerCreate']);
 Route::get('/order/auto_buyer/detail', [OrderController::class, 'getOrderDetail']);
 Route::post('/order/auto_buyer/confirm', [OrderController::class, 'autoBuyerConfirm']);
-Route::get('/message/test', [MessageController::class, 'test']);
+// Route::get('/message/test', [MessageController::class, 'test']);
 
 Route::middleware(['check.api.token'])->group(function () {
     Route::get('/user/info', [UserController::class, 'getUserInfo']);
@@ -54,6 +54,8 @@ Route::middleware(['check.api.token'])->group(function () {
     Route::post('/order_listing', [OrderListingController::class, 'createOrderListing']);
     Route::get('/order_listing/page', [OrderListingController::class, 'getOrderListingByPage']);
     Route::get('/order_listing', [OrderListingController::class, 'getOrderListing']);
+    Route::get('/order_listing/my', [OrderListingController::class, 'getMyOrderListing']);
+    Route::post('/order_listing/cancel', [OrderListingController::class, 'cancelOrderListing']);
 
     Route::post('/order', [OrderController::class, 'create']);
     Route::get('/order/buyer/my', [OrderController::class, 'getMyBuyerOrders']);

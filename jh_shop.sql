@@ -298,7 +298,7 @@ CREATE TABLE `jh_user_order_listing` (
   `remain_amount` decimal(15,2) NOT NULL COMMENT '剩余数量',
   `min_sale_amount` decimal(15,2) UNSIGNED NOT NULL COMMENT '最低售卖数量，低于此数量下架挂单',
   `payment_method` enum('bank','alipay','wechat') DEFAULT NULL COMMENT '支付方式',
-  `status` tinyint(1) NOT NULL DEFAULT '1' COMMENT '挂单状态：0 已下架，1 在售',
+  `status` tinyint(1) NOT NULL DEFAULT '1' COMMENT '挂单状态：0 已下架，1 在售 2 禁售 3 锁库存冻结 4 售完 5 已撤单',
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户挂单表';

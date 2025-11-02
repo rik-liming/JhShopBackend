@@ -6,7 +6,9 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Carbon\Carbon;
+use App\Models\Order;
 
 class OrderListing extends Authenticatable
 {
@@ -25,6 +27,14 @@ class OrderListing extends Authenticatable
 
     protected $hidden = [
     ];
+
+    /**
+     * 一个挂单对应多个订单
+     */
+    public function orders(): HasMany
+    {
+        return $this->hasMany(Order::class, 'order_listing_id', 'id');
+    }
 
     /**
      * 指定日期字段

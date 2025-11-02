@@ -65,7 +65,7 @@ class OrderListingController extends Controller
         }
 
         $existingOrderListing = OrderListing::where('user_id', $userId)
-            ->where('status', 1)
+            ->whereIn('status', [1,2,3])
             ->where('payment_method', $request->input('payment_method'))
             ->first();
         if ($existingOrderListing) {
@@ -141,5 +141,86 @@ class OrderListingController extends Controller
         return ApiResponse::success([
             'orderListing' => $orderListing,
         ]);
+    }
+
+    /**
+     * 获取当前挂单信息
+     */
+    public function getMyOrderListing(Request $request)
+    {
+        // 从中间件获取的用户ID
+        $userId = $request->user_id_from_token ?? null;
+
+        if (!$userId) {
+            return ApiResponse::error(ApiCode::USER_NOT_FOUND);
+        }
+
+        // 构建查询
+        $orderListings = OrderListing::where('user_id', $userId)
+            ->where('status', 1)
+            ->get();
+
+        if (!$orderListings) {
+            return ApiResponse::error(ApiCode::ORDER_LISTING_NOT_FOUND);
+        }
+
+        return ApiResponse::success([
+            'orderListings' => $orderListings,
+        ]);
+    }
+
+    /**
+     * 撤销挂单信息
+     */
+    public function cancelOrderListing(Request $request)
+    {
+        // 从中间件获取的用户ID
+        $userId = $request->user_id_from_token ?? null;
+        $id = $request->id ?? null;
+
+        if (!$userId) {
+            return ApiResponse::error(ApiCode::USER_NOT_FOUND);
+        }
+
+        if (!$id) {
+            return ApiResponse::error(ApiCode::ORDER_LISTING_NOT_FOUND);
+        }
+
+        $orderListing = OrderListing::with('orders')->find($id);
+        if (!$orderListing) {
+            return ApiResponse::error(ApiCode::ORDER_LISTING_NOT_FOUND);
+        }
+
+        // 检查所有关联订单状态
+        $forbiddenStatuses = [0,1,4];
+        foreach ($orderListing->orders as $order) {
+            if (in_array($order->status, $forbiddenStatuses)) {
+                return ApiResponse::error(ApiCode::ORDER_LISTING_CANCEL_FORBIDDEN);
+            }
+        }
+
+        DB::beginTransaction();
+        try {
+            $orderListing->status = 5;
+            $orderListing->save();
+
+            // 撤单需要返还用户冻结的资产
+            $userAccount = UserAccount::where('user_id', $userId)
+                ->first();
+            
+            if (!$userAccount) {
+                return ApiResponse::error(ApiCode::USER_NOT_FOUND);
+            }
+
+            $userAccount->available_balance = bcadd($userAccount->available_balance, $orderListing->remain_amount, 2);
+            $userAccount->save();
+
+            DB::commit();
+            return ApiResponse::success([]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            // report($e);
+            return ApiResponse::error(ApiCode::OPERATION_FAIL);
+        }
     }
 }
