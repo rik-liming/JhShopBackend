@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use App\Models\Order;
+use App\Models\OrderListing;
 use Illuminate\Support\Facades\Log;
 
 class CheckOrders extends Command
@@ -29,7 +30,7 @@ class CheckOrders extends Command
 	
 	protected handleCancelOrders() {
 		// 计算时间阈值
-        $threshold = now()->subMinutes(20);
+        $threshold = now()->subMinutes(10);
 
         // 查询符合条件的订单ID
         $orderIds = Order::where('status', 0)
@@ -52,7 +53,7 @@ class CheckOrders extends Command
 
 	protected handleArgueOrders() {
 		// 计算时间阈值
-        $threshold = now()->subMinutes(20);
+        $threshold = now()->subMinutes(10);
 
         // 查询符合条件的订单ID
         $orderIds = Order::where('status', 1)
@@ -83,7 +84,15 @@ class CheckOrders extends Command
 			$order->status = 3;
 			$order->save();
 
-			// 恢复挂单状态，todo
+            // 恢复挂单状态
+            $orderListing = OrderListing::where('id', $order->order_listing_id)
+            ->first();
+
+            $orderListing->remain_amount = bcadd($orderListing->remain_amount, $order->amount, 2);
+            if ($orderListing->status == 3) { // 如果是因为库存冻结下架，需要恢复上架
+                $orderListing->status = 1;
+            }
+            $orderListing->save();
 
             DB::commit();
             return ['success' => true, 'date' => $date];

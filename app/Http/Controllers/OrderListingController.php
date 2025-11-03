@@ -59,6 +59,7 @@ class OrderListingController extends Controller
         $paymentMethod = UserPaymentMethod::where('status', 1)
             ->where('user_id', $userId)
             ->where('payment_method', $request->input('payment_method'))
+            ->where('default_payment', 1)
             ->first();
         if (!$paymentMethod) {
             return ApiResponse::error(ApiCode::USER_PAYMENT_METHOD_NOT_SET);
