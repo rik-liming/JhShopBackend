@@ -50,6 +50,7 @@ Route::middleware(['check.api.token'])->group(function () {
     Route::post('/payment_method', [PaymentMethodController::class, 'create']);
     Route::post('/payment_method/update', [PaymentMethodController::class, 'update']);
     Route::delete('/payment_method', [PaymentMethodController::class, 'delete']);
+    Route::post('/payment_method/default', [PaymentMethodController::class, 'setDefault']);
 
     Route::post('/order_listing', [OrderListingController::class, 'createOrderListing']);
     Route::get('/order_listing/page', [OrderListingController::class, 'getOrderListingByPage']);

@@ -25,6 +25,7 @@ class ApiCode
     const USER_PAYMENT_METHOD_NOT_FOUND = 20010;
     const USER_PAYMENT_METHOD_NOT_SET = 20011;
     const USER_AUTO_BUYER_VERIFY_FAIL = 20012;
+    const USER_PAYMENT_METHOD_SET_FAIL = 20013;
 
     // 订单相关
     const ORDER_LISTING_NOT_FOUND = 20100;
@@ -69,6 +70,7 @@ class ApiCode
         self::USER_PAYMENT_METHOD_NOT_FOUND => '未找到该支付方式',
         self::USER_PAYMENT_METHOD_NOT_SET => '未设置收款信息',
         self::USER_AUTO_BUYER_VERIFY_FAIL => '远程下单身份校验失败',
+        self::USER_PAYMENT_METHOD_SET_FAIL => '支付方式设置失败',
 
         self::ORDER_LISTING_NOT_FOUND => '无该挂单信息',
         self::ORDER_LISTING_AMOUNT_NOT_ENOUGH => '挂单库存不足',

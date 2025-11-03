@@ -223,4 +223,52 @@ class PaymentMethodController extends Controller
             'payment_method' => $paymentMethod,
         ]);
     }
+
+    public function setDefault(Request $request)
+    {
+        // 从中间件获取的用户ID
+        $userId = $request->user_id_from_token ?? null;
+
+        if (!$userId) {
+            return ApiResponse::error(ApiCode::USER_NOT_FOUND);
+        }
+
+        $user = User::where('id', $userId)->first();
+        if (!$user) {
+            return ApiResponse::error(ApiCode::USER_NOT_FOUND);
+        }
+
+        $data = $request->input(); // 前端传的数组 [{id, default_payment}, ...]
+
+        \Log::info("get info...");
+        if (!is_array($data) || empty($data)) {
+            return ApiResponse::error(ApiCode::USER_PAYMENT_METHOD_SET_FAIL);
+        }
+        \Log::info("get info 2...");
+
+        try {
+            DB::beginTransaction();
+
+            foreach ($data as $item) {
+                if (!isset($item['id'])) continue;
+
+                $method = UserPaymentMethod::where('id', $item['id'])
+                    ->where('user_id', $user->id)
+                    ->first();
+
+                if (!$method) continue;
+
+                // 再设置当前项的 default_payment
+                $method->default_payment = $item['default_payment'];
+                $method->save();
+            }
+
+            DB::commit();
+            return ApiResponse::success([]);
+        } catch (\Throwable $e) {
+            \Log::info($e);
+            DB::rollBack();
+            return ApiResponse::error(ApiCode::USER_PAYMENT_METHOD_SET_FAIL);
+        }
+    }
 }
