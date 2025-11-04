@@ -25,6 +25,7 @@ use App\Http\Controllers\AdminStatController;
 use App\Http\Controllers\AdminOrderController;
 use App\Http\Controllers\AdminConfigController;
 use App\Http\Controllers\AdminReportController;
+use App\Http\Controllers\AdminMessageController;
 
 use App\Http\Controllers\PrivilegeController;
 use App\Http\Controllers\RoleController;
@@ -118,6 +119,10 @@ Route::middleware(['check.admin.token'])->group(function () {
 
     Route::get('/admin/report/list', [AdminReportController::class, 'getReportByTime']);
     Route::post('/admin/report/daily', [AdminReportController::class, 'generateTodayReport']);
+
+    Route::get('/admin/message/list', [AdminMessageController::class, 'getList']);
+    Route::get('/admin/message/unread', [AdminMessageController::class, 'getUnreadCount']);
+    Route::post('/admin/message/markread', [AdminMessageController::class, 'markAsRead']);
 });
 
 // Route::middleware('auth:sanctum')->group(function () {

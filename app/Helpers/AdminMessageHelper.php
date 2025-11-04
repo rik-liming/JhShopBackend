@@ -25,11 +25,15 @@ class AdminMessageHelper
     /**
      * 添加消息
      */
-    public static function pushMessage($businessId, $businessType, array $message)
+    public static function pushMessage(array $message)
     {
         $keyList = self::getListKey();
         $keyIndex = self::getIndexKey();
-		$keyUnread = self::getUnreadKey();
+        $keyUnread = self::getUnreadKey();
+        
+        $businessId = $message['business_id'];
+        $businessType = $message['business_type'];
+        $referenceId = $message['reference_id'];
 
         // 查找是否存在相同 businessId 的消息
 		$existingIndex = Redis::hget($keyIndex, $businessId);
@@ -46,7 +50,8 @@ class AdminMessageHelper
             $msg = [
                 'id' => (string) Str::uuid(),
 				'business_id' => $businessId,
-				'business_type' => $businessType,
+                'business_type' => $businessType,
+                'reference_id' => $referenceId,
                 'title' => $message['title'] ?? '',
                 'content' => $message['content'] ?? '',
                 'status' => 'unread',
@@ -54,7 +59,7 @@ class AdminMessageHelper
             ];
 
             Redis::lpush($keyList, json_encode($msg));
-            Redis::hset($keyIndex, $transactionId, 0);
+            Redis::hset($keyIndex, $businessId, 0);
             Redis::incr($keyUnread);
 
             // 重新计算索引（business_id -> index）

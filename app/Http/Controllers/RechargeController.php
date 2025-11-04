@@ -14,7 +14,9 @@ use App\Models\FinancialRecord;
 use App\Models\PlatformConfig;
 use App\Models\UserAccount;
 use Illuminate\Support\Facades\Redis;
+use App\Helpers\AdminMessageHelper;
 use App\Enums\BusinessDef;
+use App\Events\BusinessUpdated;
 
 class RechargeController extends Controller
 {
@@ -46,9 +48,9 @@ class RechargeController extends Controller
         }
 
         // 查找是否存在待处理的充值，不允许充值期间再次申请
-        $existingRecharge = Recharge::where('user_id')
+        $existingRecharge = Recharge::where('user_id', $userId)
             ->where('status', BusinessDef::RECHARGE_WAIT)
-            ->get();
+            ->first();
         if ($existingRecharge) {
             return ApiResponse::error(ApiCode::RECHARGE_REQUEST_LIMIT);
         }
@@ -115,7 +117,7 @@ class RechargeController extends Controller
                 'recharge_images' => $recharge_images, // text 类型字段，传递空字符串
                 'balance_before' => 0.00,
                 'balance_after' => 0.00,
-                'status' => 0,
+                'status' => BusinessDef::RECHARGE_WAIT,
             ]);
 
             FinancialRecord::create([
@@ -136,6 +138,30 @@ class RechargeController extends Controller
 
             return $recharge;
         });
+
+        if (!$newRecharge) {
+            return ApiResponse::error(ApiCode::RECHARGE_REQUEST_FAIL);
+        }
+
+        // 提交充值成功，推送消息给后台管理员
+        // business id
+        $today = Carbon::now()->format('Ymd');
+        $todayBusinessIncrKey = "business:{$today}:sequence";
+        $businessSequence = Redis::incr($todayBusinessIncrKey);
+
+        $formattedSequence = str_pad($businessSequence, 4, '0', STR_PAD_LEFT); // 生成 3 位随机数，填充 0
+        $business_id = "${today}_${formattedSequence}";
+
+        AdminMessageHelper::pushMessage([
+            'business_id' => $business_id,
+            'business_type' => BusinessDef::ADMIN_BUSINESS_TYPE_RECHARGE,
+            'reference_id' => $newRecharge->id,
+            'title' => '',
+            'content' => '',
+        ]);
+
+        // 通知管理员业务变动
+        event(new BusinessUpdated());
 
         return ApiResponse::success([
             'recharge' => $newRecharge,

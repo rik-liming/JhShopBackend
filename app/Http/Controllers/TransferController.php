@@ -15,6 +15,9 @@ use App\Models\FinancialRecord;
 use App\Models\PlatformConfig;
 use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\Hash;
+use App\Helpers\AdminMessageHelper;
+use App\Enums\BusinessDef;
+use App\Events\BusinessUpdated;
 
 class TransferController extends Controller
 {
@@ -52,6 +55,11 @@ class TransferController extends Controller
         $receiverUser = User::where('id', $receiver_user_id)->first();
         if (!$receiverUser) {
             return ApiResponse::error(ApiCode::USER_NOT_FOUND);
+        }
+
+        if ($receiverUser->role !== BusinessDef::USER_ROLE_SELLER
+            && $receiverUser->role !== BusinessDef::USER_ROLE_AGENT) {
+            return ApiResponse::error(ApiCode::TRANSFER_USER_ILLEGAL_ROLE);
         }
 
         $config = PlatformConfig::first();
@@ -121,7 +129,7 @@ class TransferController extends Controller
                 'sender_balance_after' => 0.00,
                 'receiver_balance_before' => 0.00,
                 'receiver_balance_after' => 0.00,
-                'status' => 0,
+                'status' => BusinessDef::TRANSFER_WAIT,
             ]);
             $transfer->save();
 
@@ -136,6 +144,26 @@ class TransferController extends Controller
 
             // 提交事务
             DB::commit();
+
+            // 提交转账成功，推送消息给后台管理员
+            // business id
+            $today = Carbon::now()->format('Ymd');
+            $todayBusinessIncrKey = "business:{$today}:sequence";
+            $businessSequence = Redis::incr($todayBusinessIncrKey);
+
+            $formattedSequence = str_pad($businessSequence, 4, '0', STR_PAD_LEFT); // 生成 3 位随机数，填充 0
+            $business_id = "${today}_${formattedSequence}";
+
+            AdminMessageHelper::pushMessage([
+                'business_id' => $business_id,
+                'business_type' => BusinessDef::ADMIN_BUSINESS_TYPE_TRANSFER,
+                'reference_id' => $transfer->id,
+                'title' => '',
+                'content' => '',
+            ]);
+
+            // 通知管理员业务变动
+            event(new BusinessUpdated());
 
             return ApiResponse::success([
                 'transfer' => $transfer,

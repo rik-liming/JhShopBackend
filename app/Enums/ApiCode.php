@@ -26,6 +26,7 @@ class ApiCode
     const USER_PAYMENT_METHOD_NOT_SET = 20011;
     const USER_AUTO_BUYER_VERIFY_FAIL = 20012;
     const USER_PAYMENT_METHOD_SET_FAIL = 20013;
+    const USER_REGISTER_FAIL = 20014;
 
     // 订单相关
     const ORDER_LISTING_NOT_FOUND = 20100;
@@ -43,6 +44,8 @@ class ApiCode
     const RECHARGE_NOT_FOUND = 20201;
     const WITHDRAW_NOT_FOUND = 20202;
     const RECHARGE_REQUEST_LIMIT = 20203;
+    const RECHARGE_REQUEST_FAIL = 20204;
+    const TRANSFER_USER_ILLEGAL_ROLE = 20205;
 
     // 配置相关
     const CONFIG_NOT_FOUND = 20300;
@@ -72,6 +75,7 @@ class ApiCode
         self::USER_PAYMENT_METHOD_NOT_SET => '未设置收款信息',
         self::USER_AUTO_BUYER_VERIFY_FAIL => '远程下单身份校验失败',
         self::USER_PAYMENT_METHOD_SET_FAIL => '支付方式设置失败',
+        self::USER_REGISTER_FAIL => '注册失败',
 
         self::ORDER_LISTING_NOT_FOUND => '无该挂单信息',
         self::ORDER_LISTING_AMOUNT_NOT_ENOUGH => '挂单库存不足',
@@ -87,6 +91,8 @@ class ApiCode
         self::RECHARGE_NOT_FOUND => '充值记录不存在',
         self::WITHDRAW_NOT_FOUND => '提现记录不存在',
         self::RECHARGE_REQUEST_LIMIT => '超出充值申请限制',
+        self::RECHARGE_REQUEST_FAIL => '充值申请失败',
+        self::TRANSFER_USER_ILLEGAL_ROLE => '不支持向该用户转账',
 
         self::CONFIG_NOT_FOUND => '配置不存在',
 

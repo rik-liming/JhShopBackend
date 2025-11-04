@@ -14,6 +14,9 @@ use Illuminate\Support\Str;
 use PragmaRX\Google2FA\Google2FA;
 use App\Helpers\ApiResponse;
 use App\Enums\ApiCode;
+use App\Helpers\AdminMessageHelper;
+use App\Enums\BusinessDef;
+use App\Events\BusinessUpdated;
 
 class AuthController extends Controller
 {
@@ -55,6 +58,30 @@ class AuthController extends Controller
 
             return $user;
         });
+
+        if (!$newUser) {
+            return ApiResponse::error(ApiCode::USER_REGISTER_FAIL);
+        }
+
+        // 用户注册成功，推送消息给后台管理员
+        // business id
+        $today = Carbon::now()->format('Ymd');
+        $todayBusinessIncrKey = "business:{$today}:sequence";
+        $businessSequence = Redis::incr($todayBusinessIncrKey);
+
+        $formattedSequence = str_pad($businessSequence, 4, '0', STR_PAD_LEFT); // 生成 3 位随机数，填充 0
+        $business_id = "${today}_${formattedSequence}";
+
+        AdminMessageHelper::pushMessage([
+            'business_id' => $business_id,
+            'business_type' => BusinessDef::ADMIN_BUSINESS_TYPE_REGISTER,
+            'reference_id' => '',
+            'title' => '',
+            'content' => '',
+        ]);
+
+        // 通知管理员业务变动
+        event(new BusinessUpdated());
 
         return ApiResponse::success([
             'user' => $newUser

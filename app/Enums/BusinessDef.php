@@ -8,9 +8,11 @@ class BusinessDef
     const RECHARGE_APPROVE = 1;  // 充值申请通过
     const RECHARGE_REJECT = -1;  // 充值申请驳回
 
+    const WITHDRAW_WAIT = 0;     // 提现申请待处理
     const WITHDRAW_APPROVE = 1;  // 提现申请通过
     const WITHDRAW_REJECT = -1;  // 提现申请驳回
 
+    const TRANSFER_WAIT = 0;     // 转账申请待处理
     const TRANSFER_APPROVE = 1;  // 转账申请通过
     const TRANSFER_REJECT = -1;  // 转账申请驳回
 
@@ -45,6 +47,9 @@ class BusinessDef
     const ORDER_STATUS_ARGUE_APPROVE = 5;   // 订单状态：争议通过
     const ORDER_STATUS_ARGUE_REJECT = 6;   // 订单状态：争议驳回
 
+    const ORDER_TYPE_NORMAL = 'normal';   // 订单类型：普通订单
+    const ORDER_TYPE_AUTO = 'auto';       // 订单类型：自动化订单
+
     const ORDER_LISTING_STATUS_OFFSELL = 0;   // 挂单状态：下架
     const ORDER_LISTING_STATUS_ONLINE = 1;   // 挂单状态：在售
     const ORDER_LISTING_STATUS_FROBIDDEN = 2;   // 挂单状态：禁售
@@ -62,4 +67,11 @@ class BusinessDef
     const USER_STATUS_INACTIVE = 0;   // 用户状态：封禁
     const USER_STATUS_ACTIVE = 1;   // 用户状态：正常
     const USER_STATUS_DELETED = -1;   // 用户状态：删除
+
+    const ADMIN_BUSINESS_TYPE_REGISTER = 'register';   // 管理员需处理业务类型：注册
+    const ADMIN_BUSINESS_TYPE_RECHARGE = 'recharge';   // 管理员需处理业务类型：充值
+    const ADMIN_BUSINESS_TYPE_TRANSFER = 'transfer';   // 管理员需处理业务类型：转账
+    const ADMIN_BUSINESS_TYPE_WITHDRAW = 'withdraw';   // 管理员需处理业务类型：提现
+    const ADMIN_BUSINESS_TYPE_ORDER_ARGUE = 'order_argue';   // 管理员需处理业务类型：订单争议
+    const ADMIN_BUSINESS_TYPE_AUTO_ORDER_ARGUE = 'auto_order_argue';   // 管理员需处理业务类型：自动化订单争议
 }

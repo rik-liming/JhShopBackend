@@ -8,6 +8,10 @@ use App\Models\OrderListing;
 use Illuminate\Support\Facades\Log;
 use App\Enums\BusinessDef;
 use Illuminate\Support\Facades\DB;
+use App\Helpers\AdminMessageHelper;
+use App\Events\BusinessUpdated;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\Redis;
 
 class CheckOrders extends Command
 {
@@ -68,11 +72,15 @@ class CheckOrders extends Command
             return;
         }
 
-        // 批量更新状态为 4（争议）
-        $count = Order::whereIn('id', $orderIds)->update(['status' => BusinessDef::ORDER_STATUS_ARGUE]);
+        // 分别取消各笔订单，回滚数据
+		foreach ($orderIds as $orderId) {
+			$this->doArgueOrderLogic($orderId);
+		}
+
+        $dealCount = count($orderIds);
 
         // 写入日志
-        \Log::info("[CronCheckOrders], {$count} orders marked as argued at " . now(), ['order_ids' => $orderIds]);
+        \Log::info("[CronCheckOrders], {$dealCount} orders marked as argued at " . now(), ['order_ids' => $orderIds]);
 	}
 
 	protected function doCancelOrderLogic($orderId) {
@@ -104,5 +112,57 @@ class CheckOrders extends Command
             \Log::error('[ExpireOrder] error occurred: ' . $e->getMessage());
             return ['success' => false, 'error' => $e->getMessage()];
         }
-	} 
+    }
+    
+    protected function doArgueOrderLogic($orderId) {
+		DB::beginTransaction();
+        try {
+			$order = Order::where('id', $orderId)->first();
+			if ($order->status !== BusinessDef::ORDER_STATUS_WAIT_SELLER) {
+				return;
+			}
+
+			// 变更订单状态
+			$order->status = BusinessDef::ORDER_STATUS_ARGUE;
+			$order->save();
+
+            DB::commit();
+
+            // 存在争议订单，推送消息给后台管理员
+            // business id
+            $today = Carbon::now()->format('Ymd');
+            $todayBusinessIncrKey = "business:{$today}:sequence";
+            $businessSequence = Redis::incr($todayBusinessIncrKey);
+
+            $formattedSequence = str_pad($businessSequence, 4, '0', STR_PAD_LEFT); // 生成 3 位随机数，填充 0
+            $business_id = "${today}_${formattedSequence}";
+
+            $businessType = '';
+            switch ($order->type) {
+                case BusinessDef::ORDER_TYPE_NORMAL:
+                    $businessType = BusinessDef::ADMIN_BUSINESS_TYPE_ORDER_ARGUE;
+                    break;
+                case BusinessDef::ORDER_TYPE_AUTO:
+                    $businessType = BusinessDef::ADMIN_BUSINESS_TYPE_AUTO_ORDER_ARGUE;
+                    break;
+            }
+
+            AdminMessageHelper::pushMessage([
+                'business_id' => $business_id,
+                'business_type' => $businessType,
+                'reference_id' => $order->id,
+                'title' => '',
+                'content' => '',
+            ]);
+
+            // 通知管理员业务变动
+            event(new BusinessUpdated());
+
+            return ['success' => true, 'date' => now()];
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            \Log::error('[ExpireOrder] error occurred: ' . $e->getMessage());
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
 }
