@@ -13,11 +13,15 @@ use Illuminate\Support\Str;
 use PragmaRX\Google2FA\Google2FA;
 use App\Helpers\ApiResponse;
 use App\Enums\ApiCode;
+use App\Enums\BusinessDef;
 
 use App\Models\User;
 use App\Models\Transfer;
 use App\Models\UserAccount;
 use App\Models\FinancialRecord;
+
+use App\Events\TransactionUpdated;
+use App\Helpers\MessageHelper;
 
 class AdminTransferController extends Controller
 {
@@ -88,20 +92,21 @@ class AdminTransferController extends Controller
 			return ApiResponse::error(ApiCode::USER_ACCOUNT_NOT_FOUND);
 		}
         
-        $newTransfer = DB::transaction(function() use ($transfer, $senderUserAccount, $receiverUserAccount) {
+        $senderFinanceRecord = FinancialRecord::where('reference_id', $transfer->id)
+                ->where('transaction_type', BusinessDef::TRANSACTION_TYPE_TRANSFER_SEND)
+				->first();
+				
+        $receiverFinanceRecord = FinancialRecord::where('reference_id', $transfer->id)
+            ->where('transaction_type', BusinessDef::TRANSACTION_TYPE_TRANSFER_RECEIVE)
+            ->first();
+
+        $newTransfer = DB::transaction(function() use ($transfer, $senderFinanceRecord, $receiverFinanceRecord,
+            $senderUserAccount, $receiverUserAccount) {
 
             $totalExpense = bcadd($transfer->amount, $transfer->fee, 2);
 
-            $senderFinanceRecord = FinancialRecord::where('reference_id', $transfer->id)
-                ->where('transaction_type', 'transfer_send')
-				->first();
-				
-			$receiverFinanceRecord = FinancialRecord::where('reference_id', $transfer->id)
-                ->where('transaction_type', 'transfer_receive')
-                ->first();
-
             // 如果通过审核，需要进行变动操作
-            if ($transfer->status === 1) {
+            if ($transfer->status === BusinessDef::TRANSFER_APPROVE) {
 
                 // sender减钱
                 $senderBalanceBefore = $senderUserAccount->total_balance;
@@ -128,12 +133,14 @@ class AdminTransferController extends Controller
                 // 更新财务变动
                 $senderFinanceRecord->balance_before = $senderBalanceBefore;
                 $senderFinanceRecord->balance_after = $senderBalanceAfter;
-				$senderFinanceRecord->actual_amount = -$totalExpense;
+                $senderFinanceRecord->actual_amount = -$totalExpense;
+                $senderFinanceRecord->status = BusinessDef::TRANSACTION_COMPLETED;
 				
 				$receiverFinanceRecord->balance_before = $receiverBalanceBefore;
                 $receiverFinanceRecord->balance_after = $receiverBalanceAfter;
                 $receiverFinanceRecord->actual_amount = $transfer->amount;
-            } else if ($transfer->status === -1) {
+                $receiverFinanceRecord->status = BusinessDef::TRANSACTION_COMPLETED;
+            } else if ($transfer->status === BusinessDef::TRANSFER_REJECT) {
                 // 驳回需要把冻结的可用资金释放
                 $senderUserAccount->available_balance = bcadd($senderUserAccount->available_balance, $totalExpense, 2);
                 $senderUserAccount->save();
@@ -141,11 +148,13 @@ class AdminTransferController extends Controller
                 // 更新财务变动
 				$senderFinanceRecord->balance_before = $senderUserAccount->total_balance;
                 $senderFinanceRecord->balance_after = $senderUserAccount->total_balance;
-				$senderFinanceRecord->actual_amount = 0.00;
+                $senderFinanceRecord->actual_amount = 0.00;
+                $senderFinanceRecord->status = BusinessDef::TRANSACTION_COMPLETED;
 
 				$receiverFinanceRecord->balance_before = $receiverUserAccount->total_balance;
                 $receiverFinanceRecord->balance_after = $receiverUserAccount->total_balance;
-				$receiverFinanceRecord->actual_amount = 0.00;
+                $receiverFinanceRecord->actual_amount = 0.00;
+                $receiverFinanceRecord->status = BusinessDef::TRANSACTION_COMPLETED;
             }
 
             // 无论是否通过，都需要更新充值信息
@@ -156,6 +165,40 @@ class AdminTransferController extends Controller
 
             return $transfer;
         });
+
+        // 添加转账者消息队列
+        MessageHelper::pushMessage($transfer->sender_user_id, [
+            'transaction_id' => $senderFinanceRecord->transaction_id,
+            'transaction_type' => $senderFinanceRecord->transaction_type,
+            'reference_id' => $senderFinanceRecord->reference_id,
+            'title' => '',
+            'content' => '',
+        ]);
+
+        // 通知用户资产变动
+        event(new TransactionUpdated(
+            $transfer->sender_user_id,
+            $senderFinanceRecord->transaction_id,
+            $senderFinanceRecord->transaction_type,
+            $senderFinanceRecord->reference_id,
+        ));
+
+        // 添加消息队列
+        MessageHelper::pushMessage($transfer->receiver_user_id, [
+            'transaction_id' => $receiverFinanceRecord->transaction_id,
+            'transaction_type' => $receiverFinanceRecord->transaction_type,
+            'reference_id' => $receiverFinanceRecord->reference_id,
+            'title' => '',
+            'content' => '',
+        ]);
+
+        // 通知用户资产变动
+        event(new TransactionUpdated(
+            $transfer->receiver_user_id,
+            $receiverFinanceRecord->transaction_id,
+            $receiverFinanceRecord->transaction_type,
+            $receiverFinanceRecord->reference_id,
+        ));
 
         return ApiResponse::success([
             'transfer' => $transfer

@@ -18,6 +18,8 @@ use App\Models\UserAccount;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Redis;
 use App\Helpers\MessageHelper;
+use App\Enums\BusinessDef;
+use App\Events\TransactionUpdated;
 
 class OrderController extends Controller
 {
@@ -81,13 +83,13 @@ class OrderController extends Controller
         
         $currentExchangeRate = 7.25;
         switch ($orderListing->payment_method) {
-            case 'alipay':
+            case BusinessDef::PAYMENT_METHOD_ALIPAY:
                 $currentExchangeRate = $config->exchange_rate_alipay;
                 break;
-            case 'wechat':
+            case BusinessDef::PAYMENT_METHOD_WECHAT:
                 $currentExchangeRate = $config->exchange_rate_wechat;
                 break;
-            case 'bank':
+            case BusinessDef::PAYMENT_METHOD_BANK:
                 $currentExchangeRate = $config->exchange_rate_bank;
                 break;
             default:
@@ -98,9 +100,10 @@ class OrderController extends Controller
         $amount = bcdiv($request->cny_amount, $currentExchangeRate, 2);
 
         // 检查卖家支付信息
-        $paymentMethod = UserPaymentMethod::where('status', 1)
+        $paymentMethod = UserPaymentMethod::where('status', BusinessDef::PAYMENT_METHOD_ACTIVE)
             ->where('user_id', $orderListing->user_id)
             ->where('payment_method', $orderListing->payment_method)
+            ->where('default_payment', BusinessDef::PAYMENT_METHOD_IS_DEFAULT)
             ->first();
         if (!$paymentMethod) {
             return ApiResponse::error(ApiCode::USER_PAYMENT_METHOD_NOT_SET);
@@ -146,13 +149,13 @@ class OrderController extends Controller
                 'exchange_rate' => $currentExchangeRate,
                 'total_price' => $amount,
                 'total_cny_price' => $request->cny_amount,
-                'status' => 0, // 初始状态为待支付
+                'status' => BusinessDef::ORDER_STATUS_WAIT_BUYER, // 初始状态为待支付
             ]);
             $order->save();
 
             // 创建买卖双方的交易记录
-            $buyerTransaction = $this->generateTransaction($order, 'order_buy');
-            $sellerTransaction = $this->generateTransaction($order, 'order_sell');
+            $buyerTransaction = $this->generateTransaction($order, BusinessDef::TRANSACTION_TYPE_ORDER_BUY);
+            $sellerTransaction = $this->generateTransaction($order, BusinessDef::TRANSACTION_TYPE_ORDER_SELL);
 
             // 记录以便反查
             $order->buy_transaction_id = $buyerTransaction->transaction_id;
@@ -161,10 +164,12 @@ class OrderController extends Controller
 
             // 更新挂单的剩余库存
             $orderListing->remain_amount = bcsub($orderListing->remain_amount, $amount, 2);
-            // 卖完自动下架
-            if ($orderListing->remain_amount <= 0) {
-                $orderListing->status = 0;
+
+            // 卖完自动下架，此时进入锁库存冻结状态
+            if ($orderListing->remain_amount < 10) {
+                $orderListing->status = BusinessDef::ORDER_LISTING_STATUS_STOCK_LOCK;
             }
+
             $orderListing->save();
 
             // 提交事务
@@ -172,26 +177,34 @@ class OrderController extends Controller
 
             // 分别向买家和卖家推送消息
             MessageHelper::pushMessage($order->buy_user_id, [
-                'transaction_id' => $order->buy_transaction_id,
-                'transaction_type' => 'order_buy',
+                'transaction_id' => $buyerTransaction->transaction_id,
+                'transaction_type' => $buyerTransaction->transaction_type,
                 'reference_id' => $order->id,
                 'title' => '',
                 'content' => '',
             ]);
 
             MessageHelper::pushMessage($order->sell_user_id, [
-                'transaction_id' => $order->sell_transaction_id,
-                'transaction_type' => 'order_sell',
+                'transaction_id' => $sellerTransaction->transaction_id,
+                'transaction_type' => $sellerTransaction->transaction_type,
                 'reference_id' => $order->id,
                 'title' => '',
                 'content' => '',
             ]);
 
+            // 通知卖家交易变动
+            event(new TransactionUpdated(
+                $order->sell_user_id,
+                $sellerTransaction->transaction_id,
+                $sellerTransaction->transaction_type,
+                $sellerTransaction->reference_id,
+            ));
+
             return ApiResponse::success([
                 'order' => $order,
             ]);
         } catch (\Exception $e) {
-            \Log::error('An error occurred: ' . $e->getMessage());
+            \Log::error('[CreateOrder] error occurred: ' . $e->getMessage());
             // 回滚事务
             DB::rollBack();
             return ApiResponse::error(ApiCode::ORDER_CREATE_FAIL);
@@ -235,13 +248,13 @@ class OrderController extends Controller
         
         $currentExchangeRate = 7.25;
         switch ($payment_method) {
-            case 'alipay':
+            case BusinessDef::PAYMENT_METHOD_ALIPAY:
                 $currentExchangeRate = $config->exchange_rate_alipay;
                 break;
-            case 'wechat':
+            case BusinessDef::PAYMENT_METHOD_WECHAT:
                 $currentExchangeRate = $config->exchange_rate_wechat;
                 break;
-            case 'bank':
+            case BusinessDef::PAYMENT_METHOD_BANK:
                 $currentExchangeRate = $config->exchange_rate_bank;
                 break;
             default:
@@ -252,7 +265,7 @@ class OrderController extends Controller
         $amount = bcdiv($cny_amount, $currentExchangeRate, 2);
 
         $orderListings = OrderListing::where('payment_method', $payment_method)
-            ->where('status', 1)
+            ->where('status', BusinessDef::ORDER_LISTING_STATUS_ONLINE)
             ->where('remain_amount', '>=', $amount)
             ->where('min_sale_amount', '<=', $amount)
             ->orderBy('updated_at', 'asc')
@@ -267,9 +280,10 @@ class OrderController extends Controller
 
         // 依次检查 3 个挂单
         foreach ($orderListings as $orderListing) {
-            $paymentMethod = UserPaymentMethod::where('status', 1)
+            $paymentMethod = UserPaymentMethod::where('status', BusinessDef::PAYMENT_METHOD_ACTIVE)
                 ->where('user_id', $orderListing->user_id)
                 ->where('payment_method', $orderListing->payment_method)
+                ->where('default_payment', BusinessDef::PAYMENT_METHOD_IS_DEFAULT)
                 ->first();
 
             if ($paymentMethod) {
@@ -321,8 +335,8 @@ class OrderController extends Controller
             $order->save();
 
             // 创建买卖双方的交易记录
-            $buyerTransaction = $this->generateTransaction($order, 'order_auto_buy');
-            $sellerTransaction = $this->generateTransaction($order, 'order_auto_sell');
+            $buyerTransaction = $this->generateTransaction($order, BusinessDef::TRANSACTION_TYPE_ORDER_AUTO_BUY);
+            $sellerTransaction = $this->generateTransaction($order, BusinessDef::TRANSACTION_TYPE_ORDER_AUTO_SELL);
 
             // 记录以便反查
             $order->buy_transaction_id = $buyerTransaction->transaction_id;
@@ -331,20 +345,46 @@ class OrderController extends Controller
 
             // 更新挂单的剩余库存
             $orderListing->remain_amount = bcsub($orderListing->remain_amount, $amount, 2);
+
             // 卖完自动下架
-            if ($orderListing->remain_amount <= 0) {
-                $orderListing->status = 0;
+            if ($orderListing->remain_amount < 10) {
+                $orderListing->status = BusinessDef::ORDER_LISTING_STATUS_STOCK_LOCK;
             }
             $orderListing->save();
 
             // 提交事务
             DB::commit();
 
+            // 分别向买家和卖家推送消息
+            MessageHelper::pushMessage($order->buy_user_id, [
+                'transaction_id' => $buyerTransaction->transaction_id,
+                'transaction_type' => $buyerTransaction->transaction_type,
+                'reference_id' => $order->id,
+                'title' => '',
+                'content' => '',
+            ]);
+
+            MessageHelper::pushMessage($order->sell_user_id, [
+                'transaction_id' => $sellerTransaction->transaction_id,
+                'transaction_type' => $sellerTransaction->transaction_type,
+                'reference_id' => $order->id,
+                'title' => '',
+                'content' => '',
+            ]);
+
+            // 通知卖家交易变动
+            event(new TransactionUpdated(
+                $order->sell_user_id,
+                $sellerTransaction->transaction_id,
+                $sellerTransaction->transaction_type,
+                $sellerTransaction->reference_id,
+            ));
+
             return ApiResponse::success([
                 'order' => $order,
             ]);
         } catch (\Exception $e) {
-            \Log::error('An error occurred: ' . $e->getMessage());
+            \Log::error('[AutoCreateOrder] error occurred: ' . $e->getMessage());
             // 回滚事务
             DB::rollBack();
             return ApiResponse::error(ApiCode::ORDER_CREATE_FAIL);
@@ -448,9 +488,16 @@ class OrderController extends Controller
     public function orderConfirm(Request $request)
     {
         // 验证输入参数
-        $validator = Validator::make($request->all(), [
+        $request->validate([
             'orderId' => 'required',
-            'role' => 'required|in:buyer,seller',
+            'role' => 'required|in:' . implode(',', [
+                BusinessDef::USER_ROLE_BUYER,
+                BusinessDef::USER_ROLE_SELLER,
+                BusinessDef::USER_ROLE_AGENT,
+            ]),
+        ], [
+            'orderId.required' => '订单ID不能为空',
+            'role.required' => '角色不能为空',
         ]);
 
         // 从中间件获取的用户ID
@@ -466,13 +513,13 @@ class OrderController extends Controller
         }
 
         // 只有订单状态和用户信息校验通过，才能确认成功
-        if ($request->role === 'buyer') {
-            if ($userId == $order->buy_user_id && $order->status == 0) {
+        if ($request->role === BusinessDef::USER_ROLE_BUYER) {
+            if ($userId == $order->buy_user_id && $order->status == BusinessDef::ORDER_STATUS_WAIT_BUYER) {
                 // 开启事务，确保数据一致性
                 DB::beginTransaction();
 
                 try {
-                    $order->status = 1;
+                    $order->status = BusinessDef::ORDER_STATUS_WAIT_SELLER;
                     $order->save();
 
                     // 更新买家的财务变动记录
@@ -483,11 +530,40 @@ class OrderController extends Controller
                     $buyerTransaction->actual_amount = $order->total_price;
                     $buyerTransaction->save();
 
+                    $sellerTransaction = FinancialRecord::
+                        where('transaction_id', $order->sell_transaction_id)
+                        ->first();
+
                     // 提交事务
                     DB::commit();
 
+                    // 分别向买家和卖家推送消息
+                    MessageHelper::pushMessage($order->buy_user_id, [
+                        'transaction_id' => $buyerTransaction->transaction_id,
+                        'transaction_type' => $buyerTransaction->transaction_type,
+                        'reference_id' => $order->id,
+                        'title' => '',
+                        'content' => '',
+                    ]);
+
+                    MessageHelper::pushMessage($order->sell_user_id, [
+                        'transaction_id' => $sellerTransaction->transaction_id,
+                        'transaction_type' => $sellerTransaction->transaction_type,
+                        'reference_id' => $order->id,
+                        'title' => '',
+                        'content' => '',
+                    ]);
+
+                    // 通知卖家交易变动
+                    event(new TransactionUpdated(
+                        $order->sell_user_id,
+                        $sellerTransaction->transaction_id,
+                        $sellerTransaction->transaction_type,
+                        $sellerTransaction->reference_id,
+                    ));
+
                 } catch (\Exception $e) {
-                    \Log::error('An error occurred: ' . $e->getMessage());
+                    \Log::error('[OrderConfirm] error occurred: ' . $e->getMessage());
                     // 回滚事务
                     DB::rollBack();
                     return ApiResponse::error(ApiCode::ORDER_CONFIRM_FAIL);
@@ -495,9 +571,10 @@ class OrderController extends Controller
             } else {
                 return ApiResponse::error(ApiCode::ORDER_CONFIRM_FAIL);
             }
-        } else if ($request->role === 'seller') {
+        } else if ($request->role === BusinessDef::USER_ROLE_SELLER
+            || $request->role === BusinessDef::USER_ROLE_AGENT) {
             // 商家确认收款后，需要处理财务变动
-            if ($userId == $order->sell_user_id && $order->status == 1) {
+            if ($userId == $order->sell_user_id && $order->status == BusinessDef::ORDER_STATUS_WAIT_SELLER) {
 
                 $userAccount = UserAccount::where('user_id', $userId)->first();
                 if (!$userAccount) {
@@ -508,7 +585,7 @@ class OrderController extends Controller
                 DB::beginTransaction();
 
                 try {
-                    $order->status = 2;
+                    $order->status = BusinessDef::ORDER_STATUS_COMPLETED;
                     $order->save();
 
                     // 更新卖家的总余额（可用余额在挂单时已经冻结，这里不需要处理）
@@ -518,6 +595,13 @@ class OrderController extends Controller
                     $userAccount->total_balance = $balanceAfter;
                     $userAccount->save();
 
+                    // 更新买家的财务变动记录
+                    $buyerTransaction = FinancialRecord::
+                        where('transaction_id', $order->buy_transaction_id)
+                        ->first();
+                    $buyerTransaction->status = BusinessDef::TRANSACTION_COMPLETED;
+                    $buyerTransaction->save();
+
                     // 更新卖家的财务变动记录
                     $sellerTransaction = FinancialRecord::
                         where('transaction_id', $order->sell_transaction_id)
@@ -526,13 +610,39 @@ class OrderController extends Controller
                     $sellerTransaction->actual_amount = $order->total_price;
                     $sellerTransaction->balance_before = $balanceBefore;
                     $sellerTransaction->balance_after = $balanceAfter;
+                    $sellerTransaction->status = BusinessDef::TRANSACTION_COMPLETED;
                     $sellerTransaction->save();
 
                     // 提交事务
                     DB::commit();
 
+                    // 分别向买家和卖家推送消息
+                    MessageHelper::pushMessage($order->buy_user_id, [
+                        'transaction_id' => $buyerTransaction->transaction_id,
+                        'transaction_type' => $buyerTransaction->transaction_type,
+                        'reference_id' => $order->id,
+                        'title' => '',
+                        'content' => '',
+                    ]);
+
+                    MessageHelper::pushMessage($order->sell_user_id, [
+                        'transaction_id' => $sellerTransaction->transaction_id,
+                        'transaction_type' => $sellerTransaction->transaction_type,
+                        'reference_id' => $order->id,
+                        'title' => '',
+                        'content' => '',
+                    ]);
+
+                    // 通知买家交易变动
+                    event(new TransactionUpdated(
+                        $order->buy_user_id,
+                        $buyerTransaction->transaction_id,
+                        $buyerTransaction->transaction_type,
+                        $buyerTransaction->reference_id,
+                    ));
+
                 } catch (\Exception $e) {
-                    \Log::error('An error occurred: ' . $e->getMessage());
+                    \Log::error('[OrderConfirm] occurred: ' . $e->getMessage());
                     // 回滚事务
                     DB::rollBack();
                     return ApiResponse::error(ApiCode::ORDER_CONFIRM_FAIL);
@@ -557,9 +667,11 @@ class OrderController extends Controller
         $formattedSequence = str_pad($transactionSequence, 4, '0', STR_PAD_LEFT); // 生成 3 位随机数，填充 0
         $transaction_id = "${today}_${formattedSequence}";
 
-        if ($transactionType === 'order_buy' || $transactionType === 'order_auto_buy') {
+        if ($transactionType === BusinessDef::TRANSACTION_TYPE_ORDER_BUY 
+            || $transactionType === BusinessDef::TRANSACTION_TYPE_ORDER_AUTO_BUY) {
             $userId = $order->buy_user_id;
-        } else if ($transactionType === 'order_sell' || $transactionType === 'order_auto_sell') {
+        } else if ($transactionType === BusinessDef::TRANSACTION_TYPE_ORDER_SELL 
+            || $transactionType === BusinessDef::TRANSACTION_TYPE_ORDER_AUTO_SELL) {
             $userId = $order->sell_user_id;
         }
 
@@ -610,7 +722,10 @@ class OrderController extends Controller
 
         // 构建查询
         $query = Order::where('sell_user_id', $userId)
-                    ->whereIn('status', [2, 4]);
+                    ->whereIn('status', [
+                        BusinessDef::ORDER_STATUS_COMPLETED,
+                        BusinessDef::ORDER_STATUS_ARGUE_APPROVE,
+                    ]);
 
         // 如果传入了时间范围，则加入时间条件
         if ($startDate) {
@@ -673,7 +788,10 @@ class OrderController extends Controller
 
         // 构建查询
         $query = Order::whereIn('sell_user_id', $userIds)
-                    ->whereIn('status', [2, 4]);
+                    ->whereIn('status', [
+                        BusinessDef::ORDER_STATUS_COMPLETED,
+                        BusinessDef::ORDER_STATUS_ARGUE_APPROVE,
+                    ]);
 
         // 如果传入了时间范围，则加入时间条件
         if ($startDate) {
@@ -723,7 +841,7 @@ class OrderController extends Controller
 
         $autoBuyer = User::where('id', $userId)
             ->where('role', 'autoBuyer')
-            ->where('status', 1)
+            ->where('status', BusinessDef::USER_STATUS_ACTIVE)
             ->first();
 
         if (!$autoBuyer) {
@@ -736,12 +854,12 @@ class OrderController extends Controller
         }
 
         // 只有订单状态和用户信息校验通过，才能确认成功
-        if ($userId == $order->buy_user_id && $order->status == 0) {
+        if ($userId == $order->buy_user_id && $order->status == BusinessDef::ORDER_STATUS_WAIT_BUYER) {
             // 开启事务，确保数据一致性
             DB::beginTransaction();
 
             try {
-                $order->status = 1;
+                $order->status = BusinessDef::ORDER_STATUS_WAIT_SELLER;
                 $order->buy_account_name = $request->account_name;
                 $order->buy_account_number = $request->account_number;
                 $order->buy_bank_name = $request->bank_name ?? '';
@@ -755,8 +873,37 @@ class OrderController extends Controller
                 $buyerTransaction->actual_amount = $order->total_price;
                 $buyerTransaction->save();
 
+                $sellerTransaction = FinancialRecord::
+                    where('transaction_id', $order->sell_transaction_id)
+                    ->first();
+
                 // 提交事务
                 DB::commit();
+
+                // 分别向买家和卖家推送消息
+                MessageHelper::pushMessage($order->buy_user_id, [
+                    'transaction_id' => $buyerTransaction->transaction_id,
+                    'transaction_type' => $buyerTransaction->transaction_type,
+                    'reference_id' => $order->id,
+                    'title' => '',
+                    'content' => '',
+                ]);
+
+                MessageHelper::pushMessage($order->sell_user_id, [
+                    'transaction_id' => $sellerTransaction->transaction_id,
+                    'transaction_type' => $sellerTransaction->transaction_type,
+                    'reference_id' => $order->id,
+                    'title' => '',
+                    'content' => '',
+                ]);
+
+                // 通知卖家交易变动
+                event(new TransactionUpdated(
+                    $order->sell_user_id,
+                    $sellerTransaction->transaction_id,
+                    $sellerTransaction->transaction_type,
+                    $sellerTransaction->reference_id,
+                ));
 
             } catch (\Exception $e) {
                 \Log::error('An error occurred: ' . $e->getMessage());

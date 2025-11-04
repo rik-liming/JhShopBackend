@@ -13,11 +13,15 @@ use Illuminate\Support\Str;
 use PragmaRX\Google2FA\Google2FA;
 use App\Helpers\ApiResponse;
 use App\Enums\ApiCode;
+use App\Enums\BusinessDef;
 
 use App\Models\User;
 use App\Models\Recharge;
 use App\Models\UserAccount;
 use App\Models\FinancialRecord;
+
+use App\Events\TransactionUpdated;
+use App\Helpers\MessageHelper;
 
 class AdminRechargeController extends Controller
 {
@@ -77,14 +81,14 @@ class AdminRechargeController extends Controller
             return ApiResponse::error(ApiCode::USER_ACCOUNT_NOT_FOUND);
         }
         
-        $newRecharge = DB::transaction(function() use ($recharge, $userAccount) {
-
-            $financeRecord = FinancialRecord::where('reference_id', $recharge->id)
-                ->where('transaction_type', 'recharge')
+        $financeRecord = FinancialRecord::where('reference_id', $recharge->id)
+                ->where('transaction_type', BusinessDef::TRANSACTION_TYPE_RECHARGE)
                 ->first();
 
+        $newRecharge = DB::transaction(function() use ($recharge, $financeRecord, $userAccount) {
+
             // 如果通过审核，需要进行变动操作
-            if ($recharge->status === 1) {
+            if ($recharge->status === BusinessDef::RECHARGE_APPROVE) {
 
                 // 加钱
                 $balanceBefore = $userAccount->total_balance;
@@ -102,11 +106,13 @@ class AdminRechargeController extends Controller
                 $financeRecord->balance_before = $balanceBefore;
                 $financeRecord->balance_after = $balanceAfter;
                 $financeRecord->actual_amount = $recharge->amount;
-            } else if ($recharge->status === -1) {
+                $financeRecord->status = BusinessDef::TRANSACTION_COMPLETED;
+            } else if ($recharge->status === BusinessDef::RECHARGE_REJECT) {
                 // 更新财务变动
                 $financeRecord->balance_before = $userAccount->total_balance;
                 $financeRecord->balance_after = $userAccount->total_balance;
                 $financeRecord->actual_amount = 0.00;
+                $financeRecord->status = BusinessDef::TRANSACTION_COMPLETED;
             }
 
             // 无论是否通过，都需要更新充值信息
@@ -116,6 +122,23 @@ class AdminRechargeController extends Controller
 
             return $recharge;
         });
+
+        // 添加消息队列
+        MessageHelper::pushMessage($recharge->user_id, [
+            'transaction_id' => $financeRecord->transaction_id,
+            'transaction_type' => $financeRecord->transaction_type,
+            'reference_id' => $financeRecord->reference_id,
+            'title' => '',
+            'content' => '',
+        ]);
+
+        // 通知用户资产变动
+        event(new TransactionUpdated(
+            $recharge->user_id,
+            $financeRecord->transaction_id,
+            $financeRecord->transaction_type,
+            $financeRecord->reference_id,
+        ));
 
         return ApiResponse::success([
             'recharge' => $recharge

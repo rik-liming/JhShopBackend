@@ -13,11 +13,15 @@ use Illuminate\Support\Str;
 use PragmaRX\Google2FA\Google2FA;
 use App\Helpers\ApiResponse;
 use App\Enums\ApiCode;
+use App\Enums\BusinessDef;
 
 use App\Models\User;
 use App\Models\Withdraw;
 use App\Models\UserAccount;
 use App\Models\FinancialRecord;
+
+use App\Events\TransactionUpdated;
+use App\Helpers\MessageHelper;
 
 class AdminWithdrawController extends Controller
 {
@@ -79,16 +83,16 @@ class AdminWithdrawController extends Controller
             return ApiResponse::error(ApiCode::USER_ACCOUNT_NOT_FOUND);
         }
         
-        $newWithdraw = DB::transaction(function() use ($withdraw, $userAccount) {
+        $financeRecord = FinancialRecord::where('reference_id', $withdraw->id)
+                ->where('transaction_type', BusinessDef::TRANSACTION_TYPE_WITHDRAW)
+                ->first();
+
+        $newWithdraw = DB::transaction(function() use ($withdraw, $financeRecord, $userAccount) {
 
             $totalExpense = bcadd($withdraw->amount, $withdraw->fee, 2);
 
-            $financeRecord = FinancialRecord::where('reference_id', $withdraw->id)
-                ->where('transaction_type', 'withdraw')
-                ->first();
-
             // 如果通过审核，需要进行变动操作
-            if ($withdraw->status === 1) {
+            if ($withdraw->status === BusinessDef::WITHDRAW_APPROVE) {
 
                 // 减钱
                 $balanceBefore = $userAccount->total_balance;
@@ -105,7 +109,8 @@ class AdminWithdrawController extends Controller
                 $financeRecord->balance_before = $balanceBefore;
                 $financeRecord->balance_after = $balanceAfter;
                 $financeRecord->actual_amount = -$totalExpense;
-            } else if ($withdraw->status === -1) {
+                $financeRecord->status = BusinessDef::TRANSACTION_COMPLETED;
+            } else if ($withdraw->status === BusinessDef::WITHDRAW_REJECT) {
                 // 驳回需要把冻结的可用资金释放
                 $userAccount->available_balance = bcadd($userAccount->available_balance, $totalExpense, 2);
 
@@ -113,6 +118,7 @@ class AdminWithdrawController extends Controller
                 $financeRecord->balance_before = $userAccount->total_balance;
                 $financeRecord->balance_after = $userAccount->total_balance;
                 $financeRecord->actual_amount = 0.00;
+                $financeRecord->status = BusinessDef::TRANSACTION_COMPLETED;
             }
 
             // 无论是否通过，都需要更新充值信息
@@ -124,6 +130,23 @@ class AdminWithdrawController extends Controller
 
             return $withdraw;
         });
+
+        // 添加消息队列
+        MessageHelper::pushMessage($withdraw->user_id, [
+            'transaction_id' => $financeRecord->transaction_id,
+            'transaction_type' => $financeRecord->transaction_type,
+            'reference_id' => $financeRecord->reference_id,
+            'title' => '',
+            'content' => '',
+        ]);
+
+        // 通知用户资产变动
+        event(new TransactionUpdated(
+            $withdraw->user_id,
+            $financeRecord->transaction_id,
+            $financeRecord->transaction_type,
+            $financeRecord->reference_id,
+        ));
 
         return ApiResponse::success([
             'withdraw' => $withdraw
