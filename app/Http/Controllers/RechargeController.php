@@ -14,6 +14,7 @@ use App\Models\FinancialRecord;
 use App\Models\PlatformConfig;
 use App\Models\UserAccount;
 use Illuminate\Support\Facades\Redis;
+use App\Enums\BusinessDef;
 
 class RechargeController extends Controller
 {
@@ -42,6 +43,14 @@ class RechargeController extends Controller
         $user = User::where('id', $userId)->first();
         if (!$user) {
             return ApiResponse::error(ApiCode::USER_NOT_FOUND);
+        }
+
+        // 查找是否存在待处理的充值，不允许充值期间再次申请
+        $existingRecharge = Recharge::where('user_id')
+            ->where('status', BusinessDef::RECHARGE_WAIT)
+            ->get();
+        if ($existingRecharge) {
+            return ApiResponse::error(ApiCode::RECHARGE_REQUEST_LIMIT);
         }
 
         $userAccount = UserAccount::where('user_id', $userId)->first();

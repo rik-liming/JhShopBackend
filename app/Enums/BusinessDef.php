@@ -4,6 +4,7 @@ namespace App\Enums;
 
 class BusinessDef
 {
+    const RECHARGE_WAIT = 0;     // 充值申请待处理
     const RECHARGE_APPROVE = 1;  // 充值申请通过
     const RECHARGE_REJECT = -1;  // 充值申请驳回
 

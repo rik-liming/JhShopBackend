@@ -42,6 +42,7 @@ class ApiCode
     const TRANSFER_NOT_FOUND = 20200;
     const RECHARGE_NOT_FOUND = 20201;
     const WITHDRAW_NOT_FOUND = 20202;
+    const RECHARGE_REQUEST_LIMIT = 20203;
 
     // 配置相关
     const CONFIG_NOT_FOUND = 20300;
@@ -85,6 +86,7 @@ class ApiCode
         self::TRANSFER_NOT_FOUND => '转账记录不存在',
         self::RECHARGE_NOT_FOUND => '充值记录不存在',
         self::WITHDRAW_NOT_FOUND => '提现记录不存在',
+        self::RECHARGE_REQUEST_LIMIT => '超出充值申请限制',
 
         self::CONFIG_NOT_FOUND => '配置不存在',
 

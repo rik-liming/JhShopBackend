@@ -135,8 +135,10 @@ class AdminUserController extends Controller
 
                 $user->role = $role;
                 // 如果变更为代理，那么rootAgent就是自己；如果是商家，rootAgent就是代理
-                if ($role == 'agent' && !$user->invite_code) {
-                    $user->invite_code = $this->generateUniqueInviteCode($role);
+                if ($role == 'agent') {
+                    if (!$user->invite_code) {
+                        $user->invite_code = $this->generateUniqueInviteCode($role);
+                    }
                     $user->root_agent_id = $user->id;
                     $user->root_agent_name = $user->user_name;
                 } else if ($role == 'seller') {

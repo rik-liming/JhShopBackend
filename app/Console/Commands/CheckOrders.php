@@ -6,6 +6,8 @@ use Illuminate\Console\Command;
 use App\Models\Order;
 use App\Models\OrderListing;
 use Illuminate\Support\Facades\Log;
+use App\Enums\BusinessDef;
+use Illuminate\Support\Facades\DB;
 
 class CheckOrders extends Command
 {
@@ -28,12 +30,12 @@ class CheckOrders extends Command
 		$this->handleArgueOrders();
 	}
 	
-	protected handleCancelOrders() {
+	protected function handleCancelOrders() {
 		// 计算时间阈值
         $threshold = now()->subMinutes(10);
 
         // 查询符合条件的订单ID
-        $orderIds = Order::where('status', 0)
+        $orderIds = Order::where('status', BusinessDef::ORDER_STATUS_WAIT_BUYER)
             ->where('created_at', '<', $threshold)
             ->pluck('id')
             ->toArray();
@@ -44,19 +46,20 @@ class CheckOrders extends Command
 
 		// 分别取消各笔订单，回滚数据
 		foreach ($orderIds as $orderId) {
-			$this->doCancelOrderLogic($orderIds);
+			$this->doCancelOrderLogic($orderId);
 		}
 
+        $dealCount = count($orderIds);
         // 写入日志
-        \Log::info("[CronCheckOrders], {$count} orders marked as expired at " . now(), ['order_ids' => $orderIds]);
+        \Log::info("[CronCheckOrders], {$dealCount} orders marked as expired at " . now(), ['order_ids' => $orderIds]);
 	}
 
-	protected handleArgueOrders() {
+	protected function handleArgueOrders() {
 		// 计算时间阈值
         $threshold = now()->subMinutes(10);
 
         // 查询符合条件的订单ID
-        $orderIds = Order::where('status', 1)
+        $orderIds = Order::where('status', BusinessDef::ORDER_STATUS_WAIT_SELLER)
             ->where('created_at', '<', $threshold)
             ->pluck('id')
             ->toArray();
@@ -66,22 +69,22 @@ class CheckOrders extends Command
         }
 
         // 批量更新状态为 4（争议）
-        $count = Order::whereIn('id', $orderIds)->update(['status' => 4]);
+        $count = Order::whereIn('id', $orderIds)->update(['status' => BusinessDef::ORDER_STATUS_ARGUE]);
 
         // 写入日志
         \Log::info("[CronCheckOrders], {$count} orders marked as argued at " . now(), ['order_ids' => $orderIds]);
 	}
 
-	protected doCancelOrderLogic($orderId) {
+	protected function doCancelOrderLogic($orderId) {
 		DB::beginTransaction();
         try {
-			$order = Order::where('id', $orderIds)->first();
-			if ($order->status !== 0) {
+			$order = Order::where('id', $orderId)->first();
+			if ($order->status !== BusinessDef::ORDER_STATUS_WAIT_BUYER) {
 				return;
 			}
 
 			// 变更订单状态
-			$order->status = 3;
+			$order->status = BusinessDef::ORDER_STATUS_EXPIRED;
 			$order->save();
 
             // 恢复挂单状态
@@ -89,16 +92,16 @@ class CheckOrders extends Command
             ->first();
 
             $orderListing->remain_amount = bcadd($orderListing->remain_amount, $order->amount, 2);
-            if ($orderListing->status == 3) { // 如果是因为库存冻结下架，需要恢复上架
-                $orderListing->status = 1;
+            if ($orderListing->status == BusinessDef::ORDER_LISTING_STATUS_STOCK_LOCK) { // 如果是因为库存冻结下架，需要恢复上架
+                $orderListing->status = BusinessDef::ORDER_LISTING_STATUS_ONLINE;
             }
             $orderListing->save();
 
             DB::commit();
-            return ['success' => true, 'date' => $date];
+            return ['success' => true, 'date' => now()];
         } catch (\Throwable $e) {
             DB::rollBack();
-            // report($e);
+            \Log::error('[ExpireOrder] error occurred: ' . $e->getMessage());
             return ['success' => false, 'error' => $e->getMessage()];
         }
 	} 
