@@ -208,6 +208,18 @@ CREATE TABLE `jh_user_account` (
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户账户表';
 
+--
+-- 转存表中的数据 `jh_user_account`
+--
+
+INSERT INTO `jh_user_account` (`id`, `user_id`, `total_balance`, `available_balance`, `payment_password`) VALUES
+(1, 1, 0.00, 0.00, '$2y$10$7N/zQ0VifAsI9ruJsRe9P.AZYZizUDddAwBv9cNGw7w0ABiyMXEDC'),
+(2, 2, 0.00, 0.00, '$2y$10$7N/zQ0VifAsI9ruJsRe9P.AZYZizUDddAwBv9cNGw7w0ABiyMXEDC'),
+(3, 3, 0.00, 0.00, '$2y$10$7N/zQ0VifAsI9ruJsRe9P.AZYZizUDddAwBv9cNGw7w0ABiyMXEDC'),
+(4, 4, 0.00, 0.00, '$2y$10$7N/zQ0VifAsI9ruJsRe9P.AZYZizUDddAwBv9cNGw7w0ABiyMXEDC'),
+(5, 5, 0.00, 0.00, '$2y$10$7N/zQ0VifAsI9ruJsRe9P.AZYZizUDddAwBv9cNGw7w0ABiyMXEDC'),
+(6, 6, 0.00, 0.00, '$2y$10$7N/zQ0VifAsI9ruJsRe9P.AZYZizUDddAwBv9cNGw7w0ABiyMXEDC');
+
 -- --------------------------------------------------------
 
 --

@@ -110,7 +110,8 @@ class OrderListingController extends Controller
 
         // 构建查询
         $query = OrderListing::where('status', 1)
-                     ->where('payment_method', $payment_method);
+                     ->where('payment_method', $payment_method)
+                     ->orderBy('id', 'desc');
 
         // 获取符合条件的用户总数
         $totalCount = $query->count();
@@ -159,6 +160,7 @@ class OrderListingController extends Controller
         // 构建查询
         $orderListings = OrderListing::where('user_id', $userId)
             ->where('status', 1)
+            ->orderBy('id', 'desc')
             ->get();
 
         if (!$orderListings) {

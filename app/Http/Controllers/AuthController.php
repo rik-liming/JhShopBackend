@@ -122,7 +122,7 @@ class AuthController extends Controller
         // 以是否成功登录过，或者是否新生成密钥，作为是否绑定过的依据
         if (!$user->last_login_time || $firstBindSecret) {
             $qrCodeUrl = $google2fa->getQRCodeUrl(
-                'JhShop',
+                'JHShop',
                 $user->email,
                 $user->two_factor_secret,
             );

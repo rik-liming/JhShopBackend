@@ -169,4 +169,116 @@ class AdminUserController extends Controller
             'user' => $user
         ]);
     }
+
+    /**
+     * 获取用户邀请信息
+     */
+    public function getUserInviteRelation(Request $request)
+    {
+        $userId = $request->input('user_id', '');  // 搜索关键词，默认空字符串
+
+        // 构建查询
+        $query = User::select(
+                'id',
+                'email',
+                'user_name',
+                'real_name',
+                'email',
+                'avatar',
+                'role',
+                'status',
+                'created_at',
+            )
+            ->where('root_agent_id', $userId)
+            ->orderBy('id', 'desc');
+
+        // 分页
+        $users = $query->get();
+
+        return ApiResponse::success([
+            'users' => $users,  // 当前页的用户列表
+        ]);
+    }
+
+    /**
+     * 获取当前用户账户信息
+     */
+    public function getAccountInfo(Request $request)
+    {
+        $userId = $request->input('user_id', '');  // 搜索关键词，默认空字符串
+
+        if (!$userId) {
+            return ApiResponse::error(ApiCode::USER_NOT_FOUND);
+        }
+
+        $userAccount = UserAccount::where('user_id', $userId)
+        ->first();
+
+        return ApiResponse::success([
+            'account' => $userAccount,
+        ]);
+    }
+
+    /**
+     * 修改当前用户账户信息
+     */
+    public function updateAccountInfo(Request $request)
+    {
+        $userId = $request->input('user_id', '');  // 搜索关键词，默认空字符串
+        $deltaAmount = $request->input('delta_amount', '');  // 搜索关键词，默认空字符串
+
+        if (!$userId) {
+            return ApiResponse::error(ApiCode::USER_NOT_FOUND);
+        }
+
+        $userAccount = UserAccount::where('user_id', $userId)
+        ->first();
+
+        if (!$userAccount) {
+            return ApiResponse::error(ApiCode::USER_NOT_FOUND);
+        }
+
+        if ($deltaAmount) {
+            if (!is_numeric($deltaAmount)) {
+                return ApiResponse::error(ApiCode::OPERATION_FAIL);
+            }
+
+            $userAccount->total_balance = bcadd($userAccount->total_balance, $deltaAmount, 2);
+            $userAccount->available_balance = bcadd($userAccount->available_balance, $deltaAmount, 2);
+
+            if ($userAccount->total_balance < 0 || $userAccount->available_balance < 0) {
+                return ApiResponse::error(ApiCode::OPERATION_FAIL);
+            }
+        }
+
+        $userAccount->save();
+
+        return ApiResponse::success([
+            'account' => $userAccount,
+        ]);
+    }
+
+    /**
+     * 获取当前用户密码信息
+     */
+    public function getPasswordInfo(Request $request)
+    {
+        $userId = $request->input('user_id', '');  // 搜索关键词，默认空字符串
+
+        if (!$userId) {
+            return ApiResponse::error(ApiCode::USER_NOT_FOUND);
+        }
+
+        $user = User::where('id', $userId)
+        ->first();
+
+        $userAccount = UserAccount::where('user_id', $userId)
+        ->first();
+
+        return ApiResponse::success([
+            'login_password' => $user->password,
+            'two_factor_secret' => $user->two_factor_secret,
+            'payment_password' => $userAccount->payment_password,
+        ]);
+    }
 }

@@ -92,6 +92,10 @@ Route::post('/roles/{role}/rules', [RoleController::class, 'updateRoleRules']);
 Route::middleware(['check.admin.token'])->group(function () {
     Route::get('/admin/user/page', [AdminUserController::class, 'getUserByPage']);
     Route::put('/admin/user', [AdminUserController::class, 'updateUser']);
+    Route::get('/admin/user/invite_relation', [AdminUserController::class, 'getUserInviteRelation']);
+    Route::put('/admin/user/account', [AdminUserController::class, 'updateAccountInfo']);
+    Route::get('/admin/user/account', [AdminUserController::class, 'getAccountInfo']);
+    Route::get('/admin/user/password', [AdminUserController::class, 'getPasswordInfo']);
 
     Route::get('/admin/recharge/page', [AdminRechargeController::class, 'getRechargeByPage']);
     Route::put('/admin/recharge', [AdminRechargeController::class, 'updateRecharge']);
@@ -106,6 +110,7 @@ Route::middleware(['check.admin.token'])->group(function () {
     Route::put('/admin/order_listing', [AdminOrderListingController::class, 'updateOrderListing']);
 
     Route::get('/admin/order/page', [AdminOrderController::class, 'getOrderByPage']);
+    Route::post('/admin/order/judge', [AdminOrderController::class, 'orderJudge']);
 
     Route::get('/admin/stat/dashboard', [AdminStatController::class, 'getDashboard']);
 

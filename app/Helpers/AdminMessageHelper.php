@@ -82,7 +82,7 @@ class AdminMessageHelper
         $keyList = self::getListKey();
         $messages = Redis::lrange($keyList, 0, -1);
 
-        return array_reverse(array_map(fn($m) => json_decode($m, true), $messages));
+        return array_map(fn($m) => json_decode($m, true), $messages);
     }
 
     /**

@@ -42,7 +42,7 @@ class AdminReportController extends Controller
         $type = $request->input('type', '');  // 搜索关键词，默认空字符串
 
         // 构建查询
-        $query = DailyReport::query();
+        $query = DailyReport::query()->orderBy('id', 'desc');
 
         // 如果传入了时间范围，则加入时间条件
         if ($startDate) {

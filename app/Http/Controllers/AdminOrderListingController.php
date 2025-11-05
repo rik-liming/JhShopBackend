@@ -25,7 +25,7 @@ class AdminOrderListingController extends Controller
         $payment_method = $request->input('payment_method', '');  // 搜索关键词，默认空字符串
 
         // 构建查询
-        $query = OrderListing::query();
+        $query = OrderListing::query()->orderBy('id', 'desc');
 
         if ($user_id) {
             $query->where('user_id', $user_id);

@@ -404,7 +404,7 @@ class OrderController extends Controller
         $page_size = $request->input('page_size', 100);  // 每页显示的记录数，默认是10条
         
         // 构建查询
-        $query = Order::where('buy_user_id', $userId);
+        $query = Order::where('buy_user_id', $userId)->orderBy('id', 'desc');
 
         if ($request->payment_method) {
             $query->where('payment_method', $request->payment_method);
@@ -439,7 +439,8 @@ class OrderController extends Controller
         $page_size = $request->input('page_size', 100);  // 每页显示的记录数，默认是10条
 
         // 构建查询
-        $query = Order::where('sell_user_id', $userId);
+        $query = Order::where('sell_user_id', $userId)
+            ->orderBy('id', 'desc');
 
         if ($request->payment_method) {
             $query->where('payment_method', $request->payment_method);
@@ -725,7 +726,8 @@ class OrderController extends Controller
                     ->whereIn('status', [
                         BusinessDef::ORDER_STATUS_COMPLETED,
                         BusinessDef::ORDER_STATUS_ARGUE_APPROVE,
-                    ]);
+                    ])
+                    ->orderBy('id', 'desc');
 
         // 如果传入了时间范围，则加入时间条件
         if ($startDate) {
@@ -791,7 +793,8 @@ class OrderController extends Controller
                     ->whereIn('status', [
                         BusinessDef::ORDER_STATUS_COMPLETED,
                         BusinessDef::ORDER_STATUS_ARGUE_APPROVE,
-                    ]);
+                    ])
+                    ->orderBy('id', 'desc');
 
         // 如果传入了时间范围，则加入时间条件
         if ($startDate) {
