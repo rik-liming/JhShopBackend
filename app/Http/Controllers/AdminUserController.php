@@ -18,7 +18,7 @@ use App\Models\User;
 use App\Models\Recharge;
 use App\Models\UserAccount;
 
-use App\Events\UserRoleChanged;
+use App\Events\UserPasswordChanged;
 
 class AdminUserController extends Controller
 {
@@ -276,9 +276,69 @@ class AdminUserController extends Controller
         ->first();
 
         return ApiResponse::success([
+            'user_id' => $user->id,
             'login_password' => $user->password,
             'two_factor_secret' => $user->two_factor_secret,
             'payment_password' => $userAccount->payment_password,
         ]);
+    }
+
+    /**
+     * 修改当前用户密码信息
+     */
+    public function updatePasswordInfo(Request $request)
+    {
+        $request->validate([
+            'login_password' => 'required|min:6',
+        ], [
+            'login_password.required' => '登录密码不能为空',
+            'login_password.min' => '登录密码长度不能少于6位',
+        ]);
+
+        $userId = $request->input('user_id', '');
+        $loginPassword = $request->input('login_password', '');
+        $twoFactorSecret = $request->input('two_factor_secret', '');
+        $paymentPassword = $request->input('payment_password', '');
+
+        if (!$userId) {
+            return ApiResponse::error(ApiCode::USER_NOT_FOUND);
+        }
+
+        $user = User::where('id', $userId)
+        ->first();
+
+        $userAccount = UserAccount::where('user_id', $userId)
+        ->first();
+
+        $hasChangeUser = false;
+        $hasChangeAccount = false;
+
+        if ($loginPassword !== $user->password) {
+            $user->password = Hash::make($loginPassword);
+            $hasChangeUser = true;
+        }
+
+        if ($twoFactorSecret !== $user->two_factor_secret) {
+            $user->two_factor_secret = $twoFactorSecret;
+            $hasChangeUser = true;
+        }
+
+        if ($paymentPassword !== $userAccount->payment_password) {
+            $userAccount->payment_password = Hash::make($paymentPassword);
+            $hasChangeAccount = true;
+        }
+
+        if ($hasChangeUser) {
+            $user->save();
+
+            // 用户信息发生改变，需要推送重新登录
+            event(new UserPasswordChanged($user->id));
+        }
+
+        if ($hasChangeAccount) {
+            $userAccount->save();
+        }
+
+        return ApiResponse::success([]);
     }
 }

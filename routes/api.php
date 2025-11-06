@@ -26,9 +26,9 @@ use App\Http\Controllers\AdminOrderController;
 use App\Http\Controllers\AdminConfigController;
 use App\Http\Controllers\AdminReportController;
 use App\Http\Controllers\AdminMessageController;
-
-use App\Http\Controllers\PrivilegeController;
-use App\Http\Controllers\RoleController;
+use App\Http\Controllers\AdminPrivilegeController;
+use App\Http\Controllers\AdminRoleController;
+use App\Http\Controllers\AdminReddotController;
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
@@ -85,10 +85,6 @@ Route::post('/admin/login', [AdminController::class, 'login']);
 Route::post('/admin/verify_otp', [AdminController::class, 'verifyOtp']);
 Route::post('/admin/logout', [AdminController::class, 'logout']);
 
-Route::get('/privileges/tree', [PrivilegeController::class, 'tree']);
-Route::get('/roles/{role}/rules', [RoleController::class, 'getRoleRules']);
-Route::post('/roles/{role}/rules', [RoleController::class, 'updateRoleRules']);
-
 Route::middleware(['check.admin.token'])->group(function () {
     Route::get('/admin/user/page', [AdminUserController::class, 'getUserByPage']);
     Route::put('/admin/user', [AdminUserController::class, 'updateUser']);
@@ -96,6 +92,7 @@ Route::middleware(['check.admin.token'])->group(function () {
     Route::put('/admin/user/account', [AdminUserController::class, 'updateAccountInfo']);
     Route::get('/admin/user/account', [AdminUserController::class, 'getAccountInfo']);
     Route::get('/admin/user/password', [AdminUserController::class, 'getPasswordInfo']);
+    Route::put('/admin/user/password', [AdminUserController::class, 'updatePasswordInfo']);
 
     Route::get('/admin/recharge/page', [AdminRechargeController::class, 'getRechargeByPage']);
     Route::put('/admin/recharge', [AdminRechargeController::class, 'updateRecharge']);
@@ -128,6 +125,13 @@ Route::middleware(['check.admin.token'])->group(function () {
     Route::get('/admin/message/list', [AdminMessageController::class, 'getList']);
     Route::get('/admin/message/unread', [AdminMessageController::class, 'getUnreadCount']);
     Route::post('/admin/message/markread', [AdminMessageController::class, 'markAsRead']);
+
+    Route::get('/admin/privilege/tree', [AdminPrivilegeController::class, 'tree']);
+    Route::get('/admin/role/rules', [AdminRoleController::class, 'getRoleRules']);
+    Route::post('/admin/role/rules', [AdminRoleController::class, 'updateRoleRules']);
+    Route::get('/admin/role/router_keys', [AdminRoleController::class, 'getRoleRouterKeys']);
+
+    Route::get('/admin/reddot', [AdminReddotController::class, 'getReddot']);
 });
 
 // Route::middleware('auth:sanctum')->group(function () {

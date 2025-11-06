@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\AdminPrivilegeRule;
+use App\Helpers\ApiResponse;
+use App\Enums\ApiCode;
 
-class PrivilegeController extends Controller
+class AdminPrivilegeController extends Controller
 {
     public function tree()
     {
@@ -13,8 +15,9 @@ class PrivilegeController extends Controller
             ->orderBy('sort_order', 'asc')
             ->get();
 
-        $tree = $this->buildTree($rules);
-        return response()->json($tree);
+        return ApiResponse::success([
+            'tree' => $this->buildTree($rules),
+        ]);
     }
 
     private function buildTree($rules, $pid = 0)

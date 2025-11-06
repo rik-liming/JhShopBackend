@@ -4,41 +4,58 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Helpers\ApiResponse;
+use App\Enums\ApiCode;
 use App\Models\AdminRoleRule;
+use App\Models\AdminPrivilegeRule;
+use App\Models\Admin;
 
 class AdminRoleController extends Controller
 {
 	/**
 	 * 获取rule id的集合
 	 */
-    public function getRoleRules($role)
+    public function getRoleRules(Request $request)
     {
-        $rules = AdminRoleRule::where('role', $role)
-            ->pluck('rule_id');
-
-        return response()->json($rules);
+		// 从中间件获取的用户ID
+        $adminId = $request->admin_id_from_token ?? null;
+		$admin = Admin::where('id', $adminId)->first();
+		
+        $rules = AdminRoleRule::where('role', $request->role)
+			->pluck('rule_id');
+			
+		return ApiResponse::success([
+            'rules' => $rules,
+        ]);
 	}
 
 	/**
 	 * 获取router_key的集合
 	 */
-	public function getRoleRouterKeys($role)
+	public function getRoleRouterKeys(Request $request)
 	{
-		$ruleIds = AdminRoleRule::where('role', $role)
+		// 从中间件获取的用户ID
+        $adminId = $request->admin_id_from_token ?? null;
+		$admin = Admin::where('id', $adminId)->first();
+
+		$ruleIds = AdminRoleRule::where('role', $admin->role)
 			->pluck('rule_id');
 
 		$routerKeys = AdminPrivilegeRule::whereIn('id', $ruleIds)
 			->whereNotNull('router_key')
 			->pluck('router_key');
 
-		return response()->json($routerKeys);
+		return ApiResponse::success([
+            'routerKeys' => $routerKeys,
+        ]);
 	}
 
 	/**
 	 * 更新权限
 	 */	
-	public function updateRoleRules(Request $request, $role)
+	public function updateRoleRules(Request $request)
 	{
+		$role = $request->input('role', []);
 		$ruleIds = $request->input('ruleIds', []);
 
 		DB::transaction(function () use ($role, $ruleIds) {
@@ -50,6 +67,6 @@ class AdminRoleController extends Controller
 			}
 		});
 
-		return response()->json(['message' => '权限更新成功']);
+		return ApiResponse::success([]);
 	}
 }

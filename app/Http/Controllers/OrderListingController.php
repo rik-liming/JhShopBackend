@@ -12,6 +12,7 @@ use App\Models\UserPaymentMethod;
 use App\Models\UserAccount;
 use App\Models\User;
 use App\Models\PlatformConfig;
+use App\Enums\BusinessDef;
 
 class OrderListingController extends Controller
 {
@@ -56,17 +57,21 @@ class OrderListingController extends Controller
         }
 
         // 如果未设置收款信息，无法挂单
-        $paymentMethod = UserPaymentMethod::where('status', 1)
+        $paymentMethod = UserPaymentMethod::where('status', BusinessDef::PAYMENT_METHOD_ACTIVE)
             ->where('user_id', $userId)
             ->where('payment_method', $request->input('payment_method'))
-            ->where('default_payment', 1)
+            ->where('default_payment', BusinessDef::PAYMENT_METHOD_IS_DEFAULT)
             ->first();
         if (!$paymentMethod) {
             return ApiResponse::error(ApiCode::USER_PAYMENT_METHOD_NOT_SET);
         }
 
         $existingOrderListing = OrderListing::where('user_id', $userId)
-            ->whereIn('status', [1,2,3])
+            ->whereIn('status', [
+                BusinessDef::ORDER_LISTING_STATUS_ONLINE,
+                BusinessDef::ORDER_LISTING_STATUS_FROBIDDEN,
+                BusinessDef::ORDER_LISTING_STATUS_STOCK_LOCK,
+            ])
             ->where('payment_method', $request->input('payment_method'))
             ->first();
         if ($existingOrderListing) {
@@ -81,7 +86,7 @@ class OrderListingController extends Controller
                 'remain_amount' => $request->input('amount'),
                 'min_sale_amount' => $request->input('min_sale_amount'),
                 'payment_method' => $request->input('payment_method'),
-                'status' => 1, // 默认状态为在售
+                'status' => BusinessDef::ORDER_LISTING_STATUS_ONLINE, // 默认状态为在售
             ]);
 
             $userAccount = UserAccount::where('user_id', $userId)->first();
@@ -109,7 +114,7 @@ class OrderListingController extends Controller
         $payment_method = $request->input('payment_method', '');  // 搜索关键词，默认空字符串
 
         // 构建查询
-        $query = OrderListing::where('status', 1)
+        $query = OrderListing::where('status', BusinessDef::ORDER_LISTING_STATUS_ONLINE)
                      ->where('payment_method', $payment_method)
                      ->orderBy('id', 'desc');
 
@@ -159,7 +164,7 @@ class OrderListingController extends Controller
 
         // 构建查询
         $orderListings = OrderListing::where('user_id', $userId)
-            ->where('status', 1)
+            ->where('status', BusinessDef::ORDER_LISTING_STATUS_ONLINE)
             ->orderBy('id', 'desc')
             ->get();
 
@@ -195,7 +200,11 @@ class OrderListingController extends Controller
         }
 
         // 检查所有关联订单状态
-        $forbiddenStatuses = [0,1,4];
+        $forbiddenStatuses = [
+            BusinessDef::ORDER_STATUS_WAIT_BUYER,
+            BusinessDef::ORDER_STATUS_WAIT_SELLER,
+            BusinessDef::ORDER_STATUS_ARGUE,
+        ];
         foreach ($orderListing->orders as $order) {
             if (in_array($order->status, $forbiddenStatuses)) {
                 return ApiResponse::error(ApiCode::ORDER_LISTING_CANCEL_FORBIDDEN);
@@ -204,7 +213,7 @@ class OrderListingController extends Controller
 
         DB::beginTransaction();
         try {
-            $orderListing->status = 5;
+            $orderListing->status = BusinessDef::ORDER_LISTING_STATUS_CANCEL;
             $orderListing->save();
 
             // 撤单需要返还用户冻结的资产

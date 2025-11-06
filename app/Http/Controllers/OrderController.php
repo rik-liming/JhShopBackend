@@ -330,7 +330,7 @@ class OrderController extends Controller
                 'exchange_rate' => $currentExchangeRate,
                 'total_price' => $amount,
                 'total_cny_price' => $request->cny_amount,
-                'status' => 0, // 初始状态为待支付
+                'status' => BusinessDef::ORDER_STATUS_WAIT_BUYER, // 初始状态为待支付
             ]);
             $order->save();
 
@@ -613,6 +613,19 @@ class OrderController extends Controller
                     $sellerTransaction->balance_after = $balanceAfter;
                     $sellerTransaction->status = BusinessDef::TRANSACTION_COMPLETED;
                     $sellerTransaction->save();
+
+                    // 注意，此处如果有挂单是因为下单导致不满足最低库存要求的，需要释放库存并转换到售完状态
+                    $orderListing = OrderListing::where('id', $order->order_listing_id)
+                    ->first();
+
+                    if ($orderListing->status == BusinessDef::ORDER_LISTING_STATUS_STOCK_LOCK) {
+                        $userAccount->available_balance = bcadd($userAccount->available_balance, $orderListing->remain_amount, 2);
+                        $userAccount->save();
+
+                        $orderListing->remain_amount = 0;
+                        $orderListing->status = BusinessDef::ORDER_LISTING_STATUS_SELL_OUT;
+                        $orderListing->save();
+                    }
 
                     // 提交事务
                     DB::commit();

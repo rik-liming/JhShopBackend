@@ -38,13 +38,16 @@ class MessageHelper
         // 查找是否存在相同 transactionId 的消息
 		$existingIndex = Redis::hget($keyIndex, $transactionId);
 
-        if (!empty($existingIndex)) {
+        if (is_numeric($existingIndex) && $existingIndex >= 0) {
             // 更新为 "未读有更新"
             $msg = json_decode(Redis::lindex($keyList, $existingIndex), true);
             $msg['content'] = $message['content'] ?? '';
-            $msg['status'] = 'updated';
+            if ($msg['status'] == 'read') {
+                $msg['status'] = 'updated';
+            }
             $msg['timestamp'] = time();
             Redis::lset($keyList, $existingIndex, json_encode($msg));
+            Redis::incr($keyUnread);
         } else {
 			// 新增消息
             $msg = [

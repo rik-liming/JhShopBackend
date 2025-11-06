@@ -11,7 +11,7 @@ class AdminRole extends Model
     protected $table = 'jh_admin_role';
 
     protected $fillable = [
-        'key', 
+        'role',
         'name', 
         'remark', 
         'status'
