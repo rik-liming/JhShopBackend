@@ -44,10 +44,12 @@ class MessageHelper
             $msg['content'] = $message['content'] ?? '';
             if ($msg['status'] == 'read') {
                 $msg['status'] = 'updated';
+                Redis::incr($keyUnread); // 只有原来消息已读，才需要增加计数
+            } else {
+                $msg['status'] = 'updated';
             }
             $msg['timestamp'] = time();
             Redis::lset($keyList, $existingIndex, json_encode($msg));
-            Redis::incr($keyUnread);
         } else {
 			// 新增消息
             $msg = [

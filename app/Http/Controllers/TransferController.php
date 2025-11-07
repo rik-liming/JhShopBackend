@@ -27,12 +27,12 @@ class TransferController extends Controller
     public function createTransfer(Request $request)
     {
         $request->validate([
-            'amount' => 'required|numeric|min:1',
+            'amount' => 'required|numeric|min:0.01',
             'receiver_user_id' => 'required',
             'payment_password' => 'required',
         ], [
             'amount.required' => '转账金额不能为空',
-            'amount.min' => '转账金额至少要大于1',
+            'amount.min' => '转账金额至少0.01',
             'receiver_user_id.required' => '接收转账信息不能为空',
             'payment_password.required' => '支付密码不能为空',
         ]);

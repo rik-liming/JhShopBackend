@@ -26,11 +26,11 @@ class RechargeController extends Controller
     public function createRecharge(Request $request)
     {
         $request->validate([
-            'amount' => 'required|numeric|min:1',
+            'amount' => 'required|numeric|min:0.01',
             'screenshot' => 'required|image',
         ], [
             'amount.required' => '充值金额不能为空',
-            'amount.min' => '充值金额要大于0',
+            'amount.min' => '充值金额至少0.01',
             'screenshot.required' => '截图不能为空',
             'screenshot.image' => '截图必须是图片',
         ]);

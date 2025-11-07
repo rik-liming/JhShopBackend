@@ -25,7 +25,7 @@ class FinancialRecordController extends Controller
         $pageSize = $request->input('pagesize', 100);  // 每页显示的记录数，默认是10条
         
         // 构建查询
-        $query = FinancialRecord::where('user_id', $userId);
+        $query = FinancialRecord::where('user_id', $userId)->orderBy('id', 'desc');
 
         // 获取符合条件的用户总数
         $totalCount = $query->count();
