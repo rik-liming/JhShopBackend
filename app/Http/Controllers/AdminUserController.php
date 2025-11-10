@@ -13,12 +13,15 @@ use Illuminate\Support\Str;
 use PragmaRX\Google2FA\Google2FA;
 use App\Helpers\ApiResponse;
 use App\Enums\ApiCode;
+use App\Enums\BusinessDef;
 
 use App\Models\User;
 use App\Models\Recharge;
 use App\Models\UserAccount;
 
 use App\Events\UserPasswordChanged;
+use App\Events\UserRoleChanged;
+use App\Events\UserStatusChanged;
 
 class AdminUserController extends Controller
 {
@@ -161,9 +164,10 @@ class AdminUserController extends Controller
         if ($hasRoleChanged) {
             event(new UserRoleChanged($user->id, $user->role));
         }
-        // if ($hasStatusChanged) {
 
-        // }
+        if ($hasStatusChanged && $status == BusinessDef::USER_STATUS_INACTIVE) {
+            event(new UserStatusChanged($user->id));
+        }
 
         return ApiResponse::success([
             'user' => $user
@@ -213,6 +217,10 @@ class AdminUserController extends Controller
 
         $userAccount = UserAccount::where('user_id', $userId)
         ->first();
+
+        if (!$userAccount) {
+            return ApiResponse::error(ApiCode::USER_NOT_FOUND);
+        }
 
         return ApiResponse::success([
             'account' => $userAccount,
@@ -338,6 +346,65 @@ class AdminUserController extends Controller
         if ($hasChangeAccount) {
             $userAccount->save();
         }
+
+        return ApiResponse::success([]);
+    }
+
+    /**
+     * 修改当前用户角色信息
+     */
+    public function updateRole(Request $request)
+    {
+        $request->validate([
+            'user_id' => 'required',
+            'role' => 'required|in:' . implode(',', [
+                BusinessDef::USER_ROLE_AGENT,
+                BusinessDef::USER_ROLE_SELLER,
+                BusinessDef::USER_ROLE_BUYER,
+                BusinessDef::USER_ROLE_AUTO_BUYER,
+            ]),
+        ], [
+            'user_id.required' => '用户ID不能为空',
+            'role.required' => '用户角色不能为空'
+        ]);
+
+        $userId = $request->input('user_id', '');
+        $role = $request->input('role', '');
+
+        if (!$userId) {
+            return ApiResponse::error(ApiCode::USER_NOT_FOUND);
+        }
+
+        $user = User::where('id', $userId)
+        ->first();
+
+        $hasRoleChanged = false;
+        if ($role) {
+            if ($user->role !== $role) {
+                $hasRoleChanged = true;
+
+                $user->role = $role;
+                // 如果变更为代理，那么rootAgent就是自己；如果是商家，rootAgent就是代理
+                if ($role == 'agent') {
+                    if (!$user->invite_code) {
+                        $user->invite_code = $this->generateUniqueInviteCode($role);
+                    }
+                    $user->root_agent_id = $user->id;
+                    $user->root_agent_name = $user->user_name;
+                } else if ($role == 'seller') {
+                    $user->root_agent_id = $user->inviter_id;
+                    $user->root_agent_name = $user->inviter_name;
+                }
+            }
+        }
+
+        // 处理状态变更，发推送
+        if ($hasRoleChanged) {
+            event(new UserRoleChanged($user->id, $user->role));
+        }
+
+        // 保存更新
+        $user->save();
 
         return ApiResponse::success([]);
     }

@@ -8,6 +8,9 @@ use App\Models\AdminRoleRule;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * 用于快速生成管理员权限规则
+ */
 class InitAdminPrivilegeRule extends Command
 {
     /**
@@ -46,7 +49,7 @@ class InitAdminPrivilegeRule extends Command
             ],
             [
                 'pid' => 2,
-                'router_key' => '/setting/system:select',
+                'router_key' => '/setting/system:scan',
                 'type' => 'action',
                 'name' => '查看',
                 'remark' => '查看',
@@ -55,38 +58,11 @@ class InitAdminPrivilegeRule extends Command
             ],
             [
                 'pid' => 2,
-                'router_key' => '/setting/system:add',
+                'router_key' => '/setting/system:modify',
                 'type' => 'action',
-                'name' => '添加',
-                'remark' => '添加',
+                'name' => '修改',
+                'remark' => '修改',
                 'sort_order' => 4,
-                'status' => 1,
-            ],
-            [
-                'pid' => 2,
-                'router_key' => '/setting/system:edit',
-                'type' => 'action',
-                'name' => '编辑',
-                'remark' => '编辑',
-                'sort_order' => 5,
-                'status' => 1,
-            ],
-            [
-                'pid' => 2,
-                'router_key' => '/setting/system:delete',
-                'type' => 'action',
-                'name' => '删除',
-                'remark' => '删除',
-                'sort_order' => 6,
-                'status' => 1,
-            ],
-            [
-                'pid' => 2,
-                'router_key' => '/setting/system:approve',
-                'type' => 'action',
-                'name' => '审批',
-                'remark' => '审批',
-                'sort_order' => 7,
                 'status' => 1,
             ],
             [
@@ -95,52 +71,25 @@ class InitAdminPrivilegeRule extends Command
                 'type' => 'menu',
                 'name' => '个人资料',
                 'remark' => '个人资料',
-                'sort_order' => 8,
+                'sort_order' => 5,
                 'status' => 1,
             ],
             [
-                'pid' => 8,
-                'router_key' => '/setting/person:select',
+                'pid' => 5,
+                'router_key' => '/setting/person:scan',
                 'type' => 'action',
                 'name' => '查看',
                 'remark' => '查看',
-                'sort_order' => 9,
+                'sort_order' => 6,
                 'status' => 1,
             ],
             [
-                'pid' => 8,
-                'router_key' => '/setting/person:add',
+                'pid' => 5,
+                'router_key' => '/setting/person:modify',
                 'type' => 'action',
-                'name' => '添加',
-                'remark' => '添加',
-                'sort_order' => 10,
-                'status' => 1,
-            ],
-            [
-                'pid' => 8,
-                'router_key' => '/setting/person:edit',
-                'type' => 'action',
-                'name' => '编辑',
-                'remark' => '编辑',
-                'sort_order' => 11,
-                'status' => 1,
-            ],
-            [
-                'pid' => 8,
-                'router_key' => '/setting/person:delete',
-                'type' => 'action',
-                'name' => '删除',
-                'remark' => '删除',
-                'sort_order' => 12,
-                'status' => 1,
-            ],
-            [
-                'pid' => 8,
-                'router_key' => '/setting/person:approve',
-                'type' => 'action',
-                'name' => '审批',
-                'remark' => '审批',
-                'sort_order' => 13,
+                'name' => '修改',
+                'remark' => '修改',
+                'sort_order' => 7,
                 'status' => 1,
             ],
             [
@@ -149,7 +98,7 @@ class InitAdminPrivilegeRule extends Command
                 'type' => 'menu',
                 'name' => '权限管理',
                 'remark' => '权限管理',
-                'sort_order' => 14,
+                'sort_order' => 8,
                 'status' => 1,
             ],
             [

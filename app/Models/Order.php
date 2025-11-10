@@ -7,6 +7,7 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Carbon\Carbon;
+use App\Models\User;
 
 class Order extends Authenticatable
 {
@@ -49,6 +50,18 @@ class Order extends Authenticatable
         'created_at',
         'updated_at',
     ];
+
+    public function buyer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'buy_user_id', 'id')
+            ->select(['id', 'email']);
+    }
+
+    public function seller(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'sell_user_id', 'id')
+            ->select(['id', 'email']);
+    }
 
     /**
      * 全局序列化时间格式

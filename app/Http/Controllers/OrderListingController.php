@@ -13,6 +13,7 @@ use App\Models\UserAccount;
 use App\Models\User;
 use App\Models\PlatformConfig;
 use App\Enums\BusinessDef;
+use App\Events\OrderListingUpdated;
 
 class OrderListingController extends Controller
 {
@@ -95,6 +96,9 @@ class OrderListingController extends Controller
 
             return $orderListing;
         });
+
+        // 推送通知挂单更新
+        event(new OrderListingUpdated());
 
         return ApiResponse::success([
             'id' => $newOrderListing->id,

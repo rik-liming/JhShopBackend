@@ -93,6 +93,7 @@ Route::middleware(['check.admin.token'])->group(function () {
     Route::get('/admin/user/account', [AdminUserController::class, 'getAccountInfo']);
     Route::get('/admin/user/password', [AdminUserController::class, 'getPasswordInfo']);
     Route::put('/admin/user/password', [AdminUserController::class, 'updatePasswordInfo']);
+    Route::put('/admin/user/role', [AdminUserController::class, 'updateRole']);
 
     Route::get('/admin/recharge/page', [AdminRechargeController::class, 'getRechargeByPage']);
     Route::put('/admin/recharge', [AdminRechargeController::class, 'updateRecharge']);

@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\DailyReport;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use App\Enums\BusinessDef;
 
 class ReportHelper
 {
@@ -33,7 +34,10 @@ class ReportHelper
                 )
                 ->join('jh_user as u', 'orders.buy_user_id', '=', 'u.id')
                 ->whereBetween('orders.created_at', [$start, $end])
-                ->whereIn('orders.status', [2, 5]) // 成功状态
+                ->whereIn('orders.status', [
+                    BusinessDef::ORDER_STATUS_COMPLETED,
+                    BusinessDef::ORDER_STATUS_ARGUE_APPROVE,
+                ]) // 成功状态
                 ->where('u.role', 'buyer')
                 ->groupBy('orders.buy_user_id')
                 ->get();
@@ -56,7 +60,10 @@ class ReportHelper
                 )
                 ->join('jh_user as u', 'orders.buy_user_id', '=', 'u.id')
                 ->whereBetween('orders.created_at', [$start, $end])
-                ->whereIn('orders.status', [2, 5]) // 成功状态
+                ->whereIn('orders.status', [
+                    BusinessDef::ORDER_STATUS_COMPLETED,
+                    BusinessDef::ORDER_STATUS_ARGUE_APPROVE,
+                ]) // 成功状态
                 ->where('u.role', 'autoBuyer')
                 ->groupBy('orders.buy_user_id')
                 ->get();
@@ -79,7 +86,10 @@ class ReportHelper
                 )
                 ->join('jh_user as u', 'orders.sell_user_id', '=', 'u.id')
                 ->whereBetween('orders.created_at', [$start, $end])
-                ->whereIn('orders.status', [2, 5])
+                ->whereIn('orders.status', [
+                    BusinessDef::ORDER_STATUS_COMPLETED,
+                    BusinessDef::ORDER_STATUS_ARGUE_APPROVE,
+                ])
                 ->whereIn('u.role', ['seller', 'agent']) // 只统计卖家订单
                 ->groupBy('u.root_agent_id')
                 ->get();

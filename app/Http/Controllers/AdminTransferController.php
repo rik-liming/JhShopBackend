@@ -34,7 +34,8 @@ class AdminTransferController extends Controller
         $page = $request->input('page', 1);  // 当前页，默认是第1页
         $pageSize = $request->input('page_size', 10);  // 每页显示的记录数，默认是10条
 		$sender_user_id = $request->input('sender_user_id', '');  // 搜索关键词，默认空字符串
-		$receiver_user_id = $request->input('receiver_user_id', '');  // 搜索关键词，默认空字符串
+        $receiver_user_id = $request->input('receiver_user_id', '');  // 搜索关键词，默认空字符串
+        $display_transfer_id = $request->input('display_transfer_id', '');  // 搜索关键词，默认空字符串
 
         // 构建查询
 		$query = Transfer::query()->orderBy('id', 'desc');
@@ -44,6 +45,9 @@ class AdminTransferController extends Controller
 		}
 		if ($receiver_user_id) {
             $query->where('receiver_user_id', $receiver_user_id);
+        }
+        if ($display_transfer_id) {
+            $query->where('display_transfer_id', $display_transfer_id);
         }
 
         // 获取符合条件的用户总数

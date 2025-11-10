@@ -32,6 +32,12 @@ class PlatformConfig extends Authenticatable
 
     protected $casts = [
         'remote_order_config' => 'array', // 自动将 JSON 转为数组
+        'transfer_fee' => 'float',
+        'withdrawl_fee' => 'float',
+        'exchange_rate_platform' => 'float',
+        'exchange_rate_alipay' => 'float',
+        'exchange_rate_wechat' => 'float',
+        'exchange_rate_bank' => 'float',
     ];
 
     /**

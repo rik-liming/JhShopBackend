@@ -233,6 +233,8 @@ CREATE TABLE `jh_user_daily_report` (
   `type` enum('buyer','autoBuyer','agent') NOT NULL COMMENT '报表类型: buyer=买家, autoBuyer=自动化买家, agent=代理',
   `order_count` int(10) UNSIGNED NOT NULL DEFAULT '0' COMMENT '订单数量',
   `total_amount` decimal(18,2) NOT NULL DEFAULT '0.00' COMMENT '订单总额',
+  `commission_rate` decimal(18,2) UNSIGNED NOT NULL DEFAULT '0.00' COMMENT '佣金比例',
+  `commission_amount` decimal(18,2) NOT NULL DEFAULT '0.00' COMMENT '佣金数额',
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户日报表';

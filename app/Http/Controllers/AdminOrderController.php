@@ -31,9 +31,11 @@ class AdminOrderController extends Controller
         $sell_user_id = $request->input('sell_user_id', '');  // 搜索关键词，默认空字符串
         $payment_method = $request->input('payment_method', '');  // 搜索关键词，默认空字符串
         $type = $request->input('type', '');  // 搜索关键词，默认空字符串
+        $display_order_id = $request->input('display_order_id', '');  // 搜索关键词，默认空字符串
 
         // 构建查询
-        $query = Order::query()->orderBy('id', 'desc');
+        $query = Order::with('buyer')->with('seller')
+            ->orderBy('id', 'desc');
 
         if ($buy_user_id) {
             $query->where('buy_user_id', $buy_user_id);
@@ -49,6 +51,10 @@ class AdminOrderController extends Controller
 
         if ($type) {
             $query->where('type', $type);
+        }
+
+        if ($display_order_id) {
+            $query->where('display_order_id', $display_order_id);
         }
 
         // 获取符合条件的用户总数

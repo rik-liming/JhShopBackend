@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Carbon\Carbon;
 use App\Models\Order;
+use App\Models\User;
 
 class OrderListing extends Authenticatable
 {
@@ -34,6 +35,11 @@ class OrderListing extends Authenticatable
     public function orders(): HasMany
     {
         return $this->hasMany(Order::class, 'order_listing_id', 'id');
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'user_id', 'id');
     }
 
     /**
