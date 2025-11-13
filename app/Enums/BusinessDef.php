@@ -74,4 +74,12 @@ class BusinessDef
     const ADMIN_BUSINESS_TYPE_WITHDRAW = 'withdraw';   // 管理员需处理业务类型：提现
     const ADMIN_BUSINESS_TYPE_ORDER_ARGUE = 'order_argue';   // 管理员需处理业务类型：订单争议
     const ADMIN_BUSINESS_TYPE_AUTO_ORDER_ARGUE = 'auto_order_argue';   // 管理员需处理业务类型：自动化订单争议
+
+    const ADMIN_ROLE_STATUS_INACTIVE = 0;   // 管理员角色状态：封禁
+    const ADMIN_ROLE_STATUS_ACTIVE = 1;   // 管理员角色状态：正常
+    const ADMIN_ROLE_STATUS_DELETED = -1;   // 管理员角色状态：删除
+
+    const ADMIN_STATUS_INACTIVE = 0;   // 管理员状态：封禁
+    const ADMIN_STATUS_ACTIVE = 1;   // 管理员状态：正常
+    const ADMIN_STATUS_DELETED = -1;   // 管理员状态：删除
 }

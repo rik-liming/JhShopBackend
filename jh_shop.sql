@@ -88,7 +88,7 @@ INSERT INTO `jh_admin_privilege_rule` (`id`, `pid`, `router_key`, `type`, `name`
 CREATE TABLE `jh_admin_role` (
   `role` varchar(50) NOT NULL COMMENT '角色唯一标识',
   `name` varchar(50) NOT NULL COMMENT '角色名',
-  `remark` varchar(50) NOT NULL COMMENT '备注',
+  `remark` varchar(255) DEFAULT NULL COMMENT '备注',
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   `status` tinyint(1) NOT NULL DEFAULT '1' COMMENT '状态：0禁用，1启用'
@@ -99,8 +99,8 @@ CREATE TABLE `jh_admin_role` (
 --
 
 INSERT INTO `jh_admin_role` (`role`, `name`, `remark`, `created_at`, `updated_at`, `status`) VALUES
-('admin', '管理员', '管理员', '2025-10-14 20:38:50', '2025-10-14 20:38:50', 1),
-('superAdmin', '超级管理员', '超级管理员', '2025-10-14 20:38:50', '2025-10-14 20:38:50', 1);
+('admin', '管理员', '管理员拥有部分权限', '2025-10-14 20:38:50', '2025-10-14 20:38:50', 1),
+('superAdmin', '超级管理员', '超级管理员拥有全部权限', '2025-10-14 20:38:50', '2025-10-14 20:38:50', 1);
 
 -- --------------------------------------------------------
 
@@ -510,7 +510,6 @@ CREATE TABLE `jh_user_withdrawal` (
 ALTER TABLE `jh_admin`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `uk_user_name` (`user_name`),
-  ADD UNIQUE KEY `uk_email` (`email`),
   ADD KEY `fk_admin_admin_role` (`role`);
 
 --

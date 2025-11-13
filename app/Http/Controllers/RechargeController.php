@@ -16,7 +16,7 @@ use App\Models\UserAccount;
 use Illuminate\Support\Facades\Redis;
 use App\Helpers\AdminMessageHelper;
 use App\Enums\BusinessDef;
-use App\Events\BusinessUpdated;
+use App\Events\AdminBusinessUpdated;
 
 class RechargeController extends Controller
 {
@@ -161,7 +161,7 @@ class RechargeController extends Controller
         ]);
 
         // 通知管理员业务变动
-        event(new BusinessUpdated());
+        event(new AdminBusinessUpdated());
 
         return ApiResponse::success([
             'recharge' => $newRecharge,

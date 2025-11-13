@@ -10,6 +10,11 @@ class AdminRole extends Model
 {
     protected $table = 'jh_admin_role';
 
+    protected $primaryKey = 'role';
+    public $incrementing = false;
+    protected $keyType = 'string';
+
+
     protected $fillable = [
         'role',
         'name', 

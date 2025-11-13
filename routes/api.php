@@ -116,7 +116,9 @@ Route::middleware(['check.admin.token'])->group(function () {
     Route::put('/admin/config', [AdminConfigController::class, 'updateConfig']);
 
     Route::get('/admin/info', [AdminController::class, 'getAdminInfo']);
+    Route::post('/admin', [AdminController::class, 'createAdmin']);
     Route::put('/admin', [AdminController::class, 'updateAdmin']);
+    Route::put('/admin/other', [AdminController::class, 'updateOtherAdmin']);
     Route::post('/admin/secret/regen', [AdminController::class, 'regenSecret']);
     Route::get('/admin/page', [AdminController::class, 'getAdminByPage']);
 
@@ -131,15 +133,10 @@ Route::middleware(['check.admin.token'])->group(function () {
     Route::get('/admin/role/rules', [AdminRoleController::class, 'getRoleRules']);
     Route::post('/admin/role/rules', [AdminRoleController::class, 'updateRoleRules']);
     Route::get('/admin/role/router_keys', [AdminRoleController::class, 'getRoleRouterKeys']);
+    Route::get('/admin/role/list', [AdminRoleController::class, 'getRoleList']);
+    Route::get('/admin/role/page', [AdminRoleController::class, 'getRoleByPage']);
+    Route::put('/admin/role/other', [AdminRoleController::class, 'updateOtherRole']);
+    Route::post('/admin/role', [AdminRoleController::class, 'createRole']);
 
     Route::get('/admin/reddot', [AdminReddotController::class, 'getReddot']);
 });
-
-// Route::middleware('auth:sanctum')->group(function () {
-//     Route::get('/permissions', [PermissionController::class, 'getPermissions']);
-
-//     // 受权限保护的路由
-//     Route::get('/admin/dashboard', function () {
-//         return response()->json(['message' => '欢迎访问后台']);
-//     })->middleware('permission:index');
-// });

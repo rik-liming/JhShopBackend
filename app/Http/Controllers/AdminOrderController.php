@@ -20,8 +20,14 @@ class AdminOrderController extends Controller
     public function getOrderByPage(Request $request)
     {
         // 验证输入参数
-        $validator = Validator::make($request->all(), [
-            'payment_method' => 'required|in:bank,alipay,wechat',
+        $request->validate([
+            'payment_method' => 'required|in:' . implode(',', [
+                BusinessDef::PAYMENT_METHOD_ALIPAY,
+                BusinessDef::PAYMENT_METHOD_WECHAT,
+                BusinessDef::PAYMENT_METHOD_BANK,
+            ]),
+        ], [
+            'payment_method.required' => '卖场不能为空'
         ]);
 
         // 获取分页参数

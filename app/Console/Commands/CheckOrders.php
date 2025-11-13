@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Log;
 use App\Enums\BusinessDef;
 use Illuminate\Support\Facades\DB;
 use App\Helpers\AdminMessageHelper;
-use App\Events\BusinessUpdated;
+use App\Events\AdminBusinessUpdated;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Redis;
 
@@ -156,7 +156,7 @@ class CheckOrders extends Command
             ]);
 
             // 通知管理员业务变动
-            event(new BusinessUpdated());
+            event(new AdminBusinessUpdated());
 
             return ['success' => true, 'date' => now()];
         } catch (\Throwable $e) {

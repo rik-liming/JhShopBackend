@@ -8,14 +8,21 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
 use App\Helpers\ApiResponse;
 use App\Enums\ApiCode;
+use App\Enums\BusinessDef;
 
 class AdminOrderListingController extends Controller
 {
     public function getOrderListingByPage(Request $request)
     {
         // 验证输入参数
-        $validator = Validator::make($request->all(), [
-            'payment_method' => 'required|in:bank,alipay,wechat',
+        $request->validate([
+            'payment_method' => 'required|in:' . implode(',', [
+                BusinessDef::PAYMENT_METHOD_ALIPAY,
+                BusinessDef::PAYMENT_METHOD_WECHAT,
+                BusinessDef::PAYMENT_METHOD_BANK,
+            ]),
+        ], [
+            'payment_method.required' => '卖场不能为空'
         ]);
 
         // 获取分页参数

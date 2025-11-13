@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Admin;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
@@ -13,10 +12,12 @@ use Illuminate\Support\Str;
 use PragmaRX\Google2FA\Google2FA;
 use App\Helpers\ApiResponse;
 use App\Enums\ApiCode;
+use App\Enums\BusinessDef;
 
-use App\Models\User;
-use App\Models\Recharge;
-use App\Models\UserAccount;
+use App\Models\Admin;
+use App\Models\AdminRole;
+
+use App\Events\AdminStatusChanged;
 
 class AdminController extends Controller
 {
@@ -32,6 +33,15 @@ class AdminController extends Controller
 
         if (!$admin || !Hash::check($request->password, $admin->password)) {
             return ApiResponse::error(ApiCode::ADMIN_NAME_PASSWORD_WRONG);
+        }
+
+        if ($admin->status !== BusinessDef::ADMIN_STATUS_ACTIVE) {
+            return ApiResponse::error(ApiCode::ADMIN_ILLEGAL);
+        }
+
+        $adminRole = AdminRole::where('role', $admin->role)->first();
+        if (!$adminRole || $adminRole->status !== BusinessDef::ADMIN_ROLE_STATUS_ACTIVE) {
+            return ApiResponse::error(ApiCode::ADMIN_ILLEGAL);
         }
 
         $firstBindSecret = false;
@@ -155,14 +165,86 @@ class AdminController extends Controller
             return ApiResponse::error(ApiCode::ADMIN_NOT_FOUND);
         }
 
-        // 保存更新
+        // 更新密码
         if (isset($validated['password'])) {
             $validated['password'] = Hash::make($validated['password']);
         }
+
+        // 保存更新
         $admin->update($validated);
 
         return ApiResponse::success([
             'admin' => $admin
+        ]);
+    }
+
+    /**
+     * 更新管理员信息
+     */
+    public function updateOtherAdmin(Request $request)
+    {
+        // 获取传入的更新参数
+        $validated = $request->validate([
+            'admin_id' => 'required|int',
+            'password' => 'string',
+            'two_factor_secret' => 'nullable|string',
+            'status' => 'nullable|int'
+        ]);
+
+        $otherAdminId = $request->admin_id;
+        $otherAdmin = Admin::where('id', $otherAdminId)->first();
+
+        if (!$otherAdmin) {
+            return ApiResponse::error(ApiCode::ADMIN_NOT_FOUND);
+        }
+
+        // 更新密码
+        if (isset($validated['password'])) {
+            $validated['password'] = Hash::make($validated['password']);
+        }
+
+        // 被封禁，需要发推送强制退出
+        if (isset($validated['status']) && $validated['status'] === BusinessDef::ADMIN_STATUS_INACTIVE) {
+            event(new AdminStatusChanged(
+                $otherAdmin->id,
+            ));
+        }
+
+        // 保存更新
+        $otherAdmin->update($validated);
+
+        return ApiResponse::success([
+            'other_admin' => $otherAdmin
+        ]);
+    }
+
+    /**
+     * 新建管理员
+     */
+    public function createAdmin(Request $request)
+    {
+        // 获取传入的更新参数
+        $validated = $request->validate([
+            'user_name' => 'required|string',
+            'password' => 'string',
+            'role' => 'string',
+        ]);
+
+        $existingAdmin = Admin::where('user_name', $request->user_name)
+            ->where('status', '!=', BusinessDef::ADMIN_STATUS_DELETED)
+            ->first();
+        if ($existingAdmin) {
+            return ApiResponse::error(ApiCode::ADMIN_ALREADY_EXIST);
+        }
+
+        $newAdmin = Admin::create([
+            'user_name' => $request->user_name,
+            'password' => Hash::make($request->password),
+            'role' => $request->role,
+        ]);
+
+        return ApiResponse::success([
+            'admin' => $newAdmin
         ]);
     }
 
@@ -208,14 +290,14 @@ class AdminController extends Controller
 
         // 构建查询
         $query = Admin::select(
-                'id',
-                'user_name',
-                'role',
-                'status',
-                'created_at',
-            )
-            ->where('status', '!=', -1)
-            ->orderBy('id', 'desc');
+            'id',
+            'user_name',
+            'role',
+            'status',
+            'created_at',
+        )
+        ->where('status', '!=', BusinessDef::ADMIN_STATUS_DELETED)
+        ->orderBy('id', 'desc');
 
         // 如果有传入 id 参数，进行模糊搜索
         if ($user_name) {

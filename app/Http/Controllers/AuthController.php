@@ -16,7 +16,7 @@ use App\Helpers\ApiResponse;
 use App\Enums\ApiCode;
 use App\Helpers\AdminMessageHelper;
 use App\Enums\BusinessDef;
-use App\Events\BusinessUpdated;
+use App\Events\AdminBusinessUpdated;
 
 class AuthController extends Controller
 {
@@ -81,7 +81,7 @@ class AuthController extends Controller
         ]);
 
         // 通知管理员业务变动
-        event(new BusinessUpdated());
+        event(new AdminBusinessUpdated());
 
         return ApiResponse::success([
             'user' => $newUser
@@ -102,7 +102,7 @@ class AuthController extends Controller
             return ApiResponse::error(ApiCode::USER_EMAIL_PASSWORD_WRONG);
         }
 
-        if ($user->status !== 1) {
+        if ($user->status !== BusinessDef::USER_STATUS_ACTIVE) {
             return ApiResponse::error(ApiCode::USER_ILLEGAL);
         }
 

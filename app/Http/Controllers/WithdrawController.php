@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\Hash;
 use App\Helpers\AdminMessageHelper;
 use App\Enums\BusinessDef;
-use App\Events\BusinessUpdated;
+use App\Events\AdminBusinessUpdated;
 
 class WithdrawController extends Controller
 {
@@ -149,7 +149,7 @@ class WithdrawController extends Controller
         ]);
 
         // 通知管理员业务变动
-        event(new BusinessUpdated());
+        event(new AdminBusinessUpdated());
 
         return ApiResponse::success([
             'withdraw' => $newWithdraw,

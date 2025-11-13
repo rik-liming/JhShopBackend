@@ -54,6 +54,10 @@ class ApiCode
     const ADMIN_NAME_PASSWORD_WRONG = 30001;
     const ADMIN_NOT_FOUND = 30002;
     const ADMIN_2FA_INVALID = 30003;
+    const ADMIN_ILLEGAL = 30004;
+    const ADMIN_ALREADY_EXIST = 30005;
+    const ADMIN_ROLE_NOT_FOUND = 30006;
+    const ADMIN_ROLE_ALREADY_EXIST = 30007;
 
     public static $msg = [
         self::SUCCESS => '成功',
@@ -99,5 +103,10 @@ class ApiCode
         self::ADMIN_NAME_PASSWORD_WRONG => '用户名或密码错误',
         self::ADMIN_NOT_FOUND => '账号不存在',
         self::ADMIN_2FA_INVALID => '验证码错误',
+        self::ADMIN_ILLEGAL => '非法用户',
+        self::ADMIN_ALREADY_EXIST => '已存在该管理员',
+        self::ADMIN_ROLE_NOT_FOUND => '角色不存在',
+        self::ADMIN_ROLE_ALREADY_EXIST => '已存在该角色',
+        
     ];
 }
