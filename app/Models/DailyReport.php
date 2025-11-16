@@ -17,9 +17,12 @@ class DailyReport extends Authenticatable
     protected $fillable = [
         'report_date',
         'user_id',
+        'user_email',
         'type',
         'order_count',
         'total_amount',
+        'commission_rate',
+        'commission_amount',
     ];
 
     protected $hidden = [

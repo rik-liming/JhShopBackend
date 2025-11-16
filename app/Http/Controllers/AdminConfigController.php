@@ -35,6 +35,8 @@ class AdminConfigController extends Controller
             'payment_qr_code' => 'nullable|string',
             'transfer_fee' => 'nullable|numeric|min:0',
             'withdrawl_fee' => 'nullable|numeric|min:0',
+            'agent_commission_rate' => 'nullable|numeric|min:0',
+            'buyer_commission_rate' => 'nullable|numeric|min:0',
             'exchange_rate_platform' => 'nullable|numeric|min:0',
             'exchange_rate_alipay' => 'nullable|numeric|min:0',
             'exchange_rate_wechat' => 'nullable|numeric|min:0',

@@ -19,6 +19,8 @@ class PlatformConfig extends Authenticatable
         'payment_qr_code',
         'transfer_fee',
         'withdrawl_fee',
+        'agent_commission_rate',
+        'buyer_commission_rate',
         'exchange_rate_platform',
         'exchange_rate_alipay',
         'exchange_rate_wechat',
@@ -34,6 +36,8 @@ class PlatformConfig extends Authenticatable
         'remote_order_config' => 'array', // 自动将 JSON 转为数组
         'transfer_fee' => 'float',
         'withdrawl_fee' => 'float',
+        'agent_commission_rate' => 'float',
+        'buyer_commission_rate' => 'float',
         'exchange_rate_platform' => 'float',
         'exchange_rate_alipay' => 'float',
         'exchange_rate_wechat' => 'float',

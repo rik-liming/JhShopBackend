@@ -2,12 +2,13 @@
 
 namespace App\Helpers;
 
-use App\Models\Order;
-use App\Models\User;
-use App\Models\DailyReport;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use App\Enums\BusinessDef;
+use App\Models\Order;
+use App\Models\User;
+use App\Models\DailyReport;
+use App\Models\PlatformConfig;
 
 class ReportHelper
 {
@@ -23,12 +24,16 @@ class ReportHelper
 
         DB::beginTransaction();
         try {
+            // 读取佣金配置
+            $config = PlatformConfig::first();
+
             /* -------------------------------
              * 系统买家报表（buyer）
              * ------------------------------- */
             $buyerReports = Order::from('jh_user_order as orders')
                 ->select(
                     'orders.buy_user_id as user_id',
+                    'u.email as user_email',
                     DB::raw('COUNT(*) as order_count'),
                     DB::raw('SUM(orders.amount) as total_amount')
                 )
@@ -39,13 +44,28 @@ class ReportHelper
                     BusinessDef::ORDER_STATUS_ARGUE_APPROVE,
                 ]) // 成功状态
                 ->where('u.role', 'buyer')
-                ->groupBy('orders.buy_user_id')
+                ->groupBy('orders.buy_user_id', 'u.email')
                 ->get();
 
+            $buyerCommissionRate = $config->buyer_commission_rate ?? 0;
+
             foreach ($buyerReports as $r) {
+                $buyerCommission = bcmul($r->total_amount, $buyerCommissionRate, 2);
+                $buyerCommission = bcdiv($buyerCommission, 100, 2);
+
                 DailyReport::updateOrCreate(
-                    ['report_date' => $date, 'user_id' => $r->user_id, 'type' => 'buyer'],
-                    ['order_count' => $r->order_count, 'total_amount' => $r->total_amount]
+                    [
+                        'report_date' => $date, 
+                        'user_id' => $r->user_id, 
+                        'user_email' => $r->user_email, 
+                        'type' => 'buyer'
+                    ],
+                    [
+                        'order_count' => $r->order_count, 
+                        'total_amount' => $r->total_amount,
+                        'commission_rate' => $buyerCommissionRate,
+                        'commission_amount' => $buyerCommission,
+                    ]
                 );
 			}
 			
@@ -55,6 +75,7 @@ class ReportHelper
             $buyerReports = Order::from('jh_user_order as orders')
                 ->select(
                     'orders.buy_user_id as user_id',
+                    'u.email as user_email',
                     DB::raw('COUNT(*) as order_count'),
                     DB::raw('SUM(orders.amount) as total_amount')
                 )
@@ -65,13 +86,21 @@ class ReportHelper
                     BusinessDef::ORDER_STATUS_ARGUE_APPROVE,
                 ]) // 成功状态
                 ->where('u.role', 'autoBuyer')
-                ->groupBy('orders.buy_user_id')
+                ->groupBy('orders.buy_user_id', 'u.email')
                 ->get();
 
             foreach ($buyerReports as $r) {
                 DailyReport::updateOrCreate(
-                    ['report_date' => $date, 'user_id' => $r->user_id, 'type' => 'autoBuyer'],
-                    ['order_count' => $r->order_count, 'total_amount' => $r->total_amount]
+                    [
+                        'report_date' => $date, 
+                        'user_id' => $r->user_id, 
+                        'user_email' => $r->user_email, 
+                        'type' => 'autoBuyer'
+                    ],
+                    [
+                        'order_count' => $r->order_count, 
+                        'total_amount' => $r->total_amount
+                    ]
                 );
             }
 
@@ -81,6 +110,7 @@ class ReportHelper
             $agentReports = Order::from('jh_user_order as orders')
                 ->select(
                     'u.root_agent_id as agent_id',
+                    'u.email as user_email',
                     DB::raw('COUNT(*) as order_count'),
                     DB::raw('SUM(orders.amount) as total_amount')
                 )
@@ -91,13 +121,29 @@ class ReportHelper
                     BusinessDef::ORDER_STATUS_ARGUE_APPROVE,
                 ])
                 ->whereIn('u.role', ['seller', 'agent']) // 只统计卖家订单
-                ->groupBy('u.root_agent_id')
+                ->groupBy('u.root_agent_id', 'u.email')
                 ->get();
 
+            $agentCommissionRate = $config->agent_commission_rate ?? 0;
+
             foreach ($agentReports as $r) {
+
+                $agentCommission = bcmul($r->total_amount, $agentCommissionRate, 2);
+                $agentCommission = bcdiv($agentCommission, 100, 2);
+
                 DailyReport::updateOrCreate(
-                    ['report_date' => $date, 'user_id' => $r->agent_id, 'type' => 'agent'],
-                    ['order_count' => $r->order_count, 'total_amount' => $r->total_amount]
+                    [
+                        'report_date' => $date, 
+                        'user_id' => $r->agent_id, 
+                        'user_email' => $r->user_email, 
+                        'type' => 'agent'
+                    ],
+                    [
+                        'order_count' => $r->order_count, 
+                        'total_amount' => $r->total_amount,
+                        'commission_rate' => $agentCommissionRate,
+                        'commission_amount' => $agentCommission,
+                    ]
                 );
             }
 

@@ -13,6 +13,7 @@ use App\Models\AdminRole;
 use App\Enums\BusinessDef;
 
 use App\Events\AdminRoleStatusChanged;
+use App\Events\AdminPrivilegeChanged;
 
 class AdminRoleController extends Controller
 {
@@ -59,7 +60,7 @@ class AdminRoleController extends Controller
 	 */	
 	public function updateRoleRules(Request $request)
 	{
-		$role = $request->input('role', []);
+		$role = $request->input('role', '');
 		$ruleIds = $request->input('ruleIds', []);
 
 		DB::transaction(function () use ($role, $ruleIds) {
@@ -70,6 +71,11 @@ class AdminRoleController extends Controller
 				AdminRoleRule::insert($data);
 			}
 		});
+
+		// 通知权限变更
+		event(new AdminPrivilegeChanged(
+			$role,
+		));
 
 		return ApiResponse::success([]);
 	}
