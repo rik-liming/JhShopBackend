@@ -37,83 +37,75 @@ class TransferController extends Controller
             'payment_password.required' => '支付密码不能为空',
         ]);
 
-        // 从中间件获取的用户ID
         $userId = $request->user_id_from_token ?? null;
-        $receiver_user_id = $request->receiver_user_id;
-        $amount = $request->amount;
-        $payment_password = $request->payment_password;
-
         if (!$userId) {
             return ApiResponse::error(ApiCode::USER_NOT_FOUND);
         }
 
-        $user = User::where('id', $userId)->first();
-        if (!$user) {
-            return ApiResponse::error(ApiCode::USER_NOT_FOUND);
-        }
-
-        $receiverUser = User::where('id', $receiver_user_id)->first();
-        if (!$receiverUser) {
-            return ApiResponse::error(ApiCode::USER_NOT_FOUND);
-        }
-
-        if ($receiverUser->role !== BusinessDef::USER_ROLE_SELLER
-            && $receiverUser->role !== BusinessDef::USER_ROLE_AGENT) {
-            return ApiResponse::error(ApiCode::TRANSFER_USER_ILLEGAL_ROLE);
-        }
-
-        $config = PlatformConfig::first();
-        if (!$config) {
-            return ApiResponse::error(ApiCode::CONFIG_NOT_FOUND);
-        }
-
-        $userAccount = UserAccount::where('user_id', $userId)->first();
-        if (!$userAccount) {
-            return ApiResponse::error(ApiCode::USER_ACCOUNT_NOT_FOUND);
-        }
-
-        $receiverUserAccount = UserAccount::where('user_id', $receiver_user_id)->first();
-        if (!$receiverUserAccount) {
-            return ApiResponse::error(ApiCode::USER_ACCOUNT_NOT_FOUND);
-        }
-
-        if (!$userAccount->payment_password) {
-            return ApiResponse::error(ApiCode::USER_PAYMENT_PASSWORD_NOT_SET);
-        }
-
-        if (!Hash::check($payment_password, $userAccount->payment_password)) {
-            return ApiResponse::error(ApiCode::USER_PAYMENT_PASSWORD_WRONG);
-        }
-
-        $totalExpense = bcadd($amount, $config->transfer_fee, 2);
-        if (bccomp($totalExpense, $userAccount->available_balance, 2) > 0) {
-            return ApiResponse::error(ApiCode::USER_BALANCE_NOT_ENOUGH);
-        }
-
-        // transaction id
-        $today = Carbon::now()->format('Ymd');
-        $todayTransactionIncrKey = "transaction:{$today}:sequence";
-        $transactionSequence = Redis::incr($todayTransactionIncrKey);
-
-        $formattedSequence = str_pad($transactionSequence, 4, '0', STR_PAD_LEFT); // 生成 3 位随机数，填充 0
-        $transaction_id = "${today}_${formattedSequence}";
-
-        // display transfer id
-        $date = Carbon::now()->format('YmdHis');
-        $randomNumber = str_pad(rand(0, 9999), 4, '0', STR_PAD_LEFT); // 生成 4 位随机数，填充 0
-        $display_transfer_id = "${date}${randomNumber}";
-
-        // 开启事务，确保数据一致性
-        DB::beginTransaction();
-
         try {
-            $cnyAmount = bcmul($amount, $config->exchange_rate_platform, 2);
-            $cnyAmount = ceil($cnyAmount * 100) / 100;
+            DB::beginTransaction();
 
-            // 提交申请的同时，需要冻结金额
+            $receiver_user_id = $request->receiver_user_id;
+            $amount = $request->amount;
+            $payment_password = $request->payment_password;
+
+            // 锁定用户
+            $user = User::where('id', $userId)->lockForUpdate()->first();
+            $receiverUser = User::where('id', $receiver_user_id)->lockForUpdate()->first();
+
+            if (!$user || !$receiverUser) {
+                throw new \Exception("用户不存在", ApiCode::USER_NOT_FOUND);
+            }
+
+            if (!in_array($receiverUser->role, [
+                BusinessDef::USER_ROLE_SELLER,
+                BusinessDef::USER_ROLE_AGENT
+            ])) {
+                throw new \Exception("转账接收方角色不合法", ApiCode::TRANSFER_USER_ILLEGAL_ROLE);
+            }
+
+            $config = PlatformConfig::first();
+            if (!$config) {
+                throw new \Exception("平台配置不存在", ApiCode::CONFIG_NOT_FOUND);
+            }
+
+            // 锁定账户
+            $userAccount = UserAccount::where('user_id', $userId)->lockForUpdate()->first();
+            $receiverUserAccount = UserAccount::where('user_id', $receiver_user_id)->lockForUpdate()->first();
+
+            if (!$userAccount || !$receiverUserAccount) {
+                throw new \Exception("账户不存在", ApiCode::USER_ACCOUNT_NOT_FOUND);
+            }
+
+            if (!$userAccount->payment_password) {
+                throw new \Exception("未设置支付密码", ApiCode::USER_PAYMENT_PASSWORD_NOT_SET);
+            }
+
+            if (!Hash::check($payment_password, $userAccount->payment_password)) {
+                throw new \Exception("支付密码错误", ApiCode::USER_PAYMENT_PASSWORD_WRONG);
+            }
+
+            // 判断余额
+            $totalExpense = bcadd($amount, $config->transfer_fee, 2);
+            if (bccomp($totalExpense, $userAccount->available_balance, 2) > 0) {
+                throw new \Exception("余额不足", ApiCode::USER_BALANCE_NOT_ENOUGH);
+            }
+
+            // 生成 ID
+            $today = Carbon::now()->format('Ymd');
+            $transactionSequence = Redis::incr("transaction:{$today}:sequence");
+            $transaction_id = $today . '_' . str_pad($transactionSequence, 4, '0', STR_PAD_LEFT);
+
+            $display_transfer_id = Carbon::now()->format('YmdHis') . str_pad(rand(0, 9999), 4, '0', STR_PAD_LEFT);
+
+            // 金额换算
+            $cnyAmount = ceil(bcmul($amount, $config->exchange_rate_platform, 2) * 100) / 100;
+
+            // 冻结发送者金额
             $userAccount->available_balance = bcsub($userAccount->available_balance, $totalExpense, 2);
             $userAccount->save();
 
+            // 创建转账记录
             $transfer = Transfer::create([
                 'display_transfer_id' => $display_transfer_id,
                 'sender_user_id' => $user->id,
@@ -131,28 +123,20 @@ class TransferController extends Controller
                 'receiver_balance_after' => 0.00,
                 'status' => BusinessDef::TRANSFER_WAIT,
             ]);
-            $transfer->save();
 
-            // 创建双方的交易记录
+            // 创建交易记录
             $senderTransaction = $this->generateTransaction($transfer, 'transfer_send');
             $receiverTransaction = $this->generateTransaction($transfer, 'transfer_receive');
 
-            // 记录以便反查
             $transfer->sender_transaction_id = $senderTransaction->transaction_id;
             $transfer->receiver_transaction_id = $receiverTransaction->transaction_id;
             $transfer->save();
 
-            // 提交事务
             DB::commit();
 
-            // 提交转账成功，推送消息给后台管理员
-            // business id
-            $today = Carbon::now()->format('Ymd');
-            $todayBusinessIncrKey = "business:{$today}:sequence";
-            $businessSequence = Redis::incr($todayBusinessIncrKey);
-
-            $formattedSequence = str_pad($businessSequence, 4, '0', STR_PAD_LEFT); // 生成 3 位随机数，填充 0
-            $business_id = "${today}_${formattedSequence}";
+            // 推送消息（此时事务已提交）
+            $businessSequence = Redis::incr("business:{$today}:sequence");
+            $business_id = $today . '_' . str_pad($businessSequence, 4, '0', STR_PAD_LEFT);
 
             AdminMessageHelper::pushMessage([
                 'business_id' => $business_id,
@@ -162,17 +146,18 @@ class TransferController extends Controller
                 'content' => '',
             ]);
 
-            // 通知管理员业务变动
             event(new AdminBusinessUpdated());
 
-            return ApiResponse::success([
-                'transfer' => $transfer,
-            ]);
+            return ApiResponse::success(['transfer' => $transfer]);
+
         } catch (\Exception $e) {
-            \Log::error('An error occurred: ' . $e->getMessage());
-            // 回滚事务
             DB::rollBack();
-            return ApiResponse::error(ApiCode::OPERATION_FAIL);
+            \Log::error('[createTransfer] ' . $e->getMessage());
+
+            // 返回对应 ApiCode
+            $code = $e->getCode() ?: ApiCode::OPERATION_FAIL;
+
+            return ApiResponse::error($code);
         }
     }
 
