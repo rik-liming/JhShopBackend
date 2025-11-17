@@ -14,17 +14,6 @@ class AdminOrderListingController extends Controller
 {
     public function getOrderListingByPage(Request $request)
     {
-        // 验证输入参数
-        $request->validate([
-            'payment_method' => 'required|in:' . implode(',', [
-                BusinessDef::PAYMENT_METHOD_ALIPAY,
-                BusinessDef::PAYMENT_METHOD_WECHAT,
-                BusinessDef::PAYMENT_METHOD_BANK,
-            ]),
-        ], [
-            'payment_method.required' => '卖场不能为空'
-        ]);
-
         // 获取分页参数
         $page = $request->input('page', 1);  // 当前页，默认是第1页
         $pageSize = $request->input('page_size', 100);  // 每页显示的记录数，默认是10条
@@ -63,26 +52,49 @@ class AdminOrderListingController extends Controller
      */
     public function updateOrderListing(Request $request)
     {
-        // 获取传入的更新参数
-        $status = $request->input('status', null);  // 状态
-
-        // 查找指定ID的挂单
-        $orderListing = OrderListing::find($request->id);
-
-        if (!$orderListing) {
-            return ApiResponse::error(ApiCode::ORDER_LISTING_NOT_FOUND);
-        }
-
-        // 更新信息
-        if ($orderListing->status !== $status) {
-            $orderListing->status = $status;
-        }
-
-        // 保存更新
-        $orderListing->save();
-
-        return ApiResponse::success([
-            'orderListing' => $orderListing
+        // 验证输入参数
+        $request->validate([
+            'id' => 'required|integer',
+            'status' => 'required|in:' . implode(',', [
+                BusinessDef::ORDER_LISTING_STATUS_OFFSELL,
+                BusinessDef::ORDER_LISTING_STATUS_ONLINE,
+                BusinessDef::ORDER_LISTING_STATUS_FROBIDDEN,
+            ]),
+        ], [
+            'id.required' => '挂单ID不能为空',
+            'status.required' => '挂单状态不能为空',
         ]);
+
+        $orderListingId = $request->input('id');
+        $newStatus = $request->input('status');
+
+        DB::beginTransaction();
+
+        try {
+            // 加悲观锁，避免并发修改
+            $orderListing = OrderListing::where('id', $orderListingId)
+                ->lockForUpdate()
+                ->first();
+
+            if (!$orderListing) {
+                throw new \Exception('', ApiCode::ORDER_LISTING_NOT_FOUND);
+            }
+
+            // 状态不同时才更新
+            if ($orderListing->status !== $newStatus) {
+                $orderListing->status = $newStatus;
+                $orderListing->save();
+            }
+
+            DB::commit();
+
+            return ApiResponse::success([
+                'orderListing' => $orderListing
+            ]);
+
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return ApiResponse::error($e->getCode());            
+        }
     }
 }

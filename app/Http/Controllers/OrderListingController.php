@@ -38,51 +38,57 @@ class OrderListingController extends Controller
             'payment_method.required' => '卖场不能为空'
         ]);
 
-        // 从中间件获取的用户ID
+        // 从中间件获取用户ID
         $userId = $request->user_id_from_token ?? null;
 
         if (!$userId) {
             return ApiResponse::error(ApiCode::USER_NOT_FOUND);
         }
 
-        $userAccount = UserAccount::select(
-            'total_balance',
-            'available_balance',
-        )
-        ->where('user_id', $userId)
-        ->first();
-        
-        if (!$userAccount) {
-            return ApiResponse::error(ApiCode::USER_NOT_FOUND);
-        }
+        DB::beginTransaction();
 
-        if ($request->input('amount') > $userAccount->available_balance) {
-            return ApiResponse::error(ApiCode::USER_BALANCE_NOT_ENOUGH);
-        }
+        try {
 
-        // 如果未设置收款信息，无法挂单
-        $paymentMethod = UserPaymentMethod::where('status', BusinessDef::PAYMENT_METHOD_ACTIVE)
-            ->where('user_id', $userId)
-            ->where('payment_method', $request->input('payment_method'))
-            ->where('default_payment', BusinessDef::PAYMENT_METHOD_IS_DEFAULT)
-            ->first();
-        if (!$paymentMethod) {
-            return ApiResponse::error(ApiCode::USER_PAYMENT_METHOD_NOT_SET);
-        }
+            // 对账户加悲观锁
+            $userAccount = UserAccount::where('user_id', $userId)
+                ->lockForUpdate()
+                ->first();
 
-        $existingOrderListing = OrderListing::where('user_id', $userId)
-            ->whereIn('status', [
-                BusinessDef::ORDER_LISTING_STATUS_ONLINE,
-                BusinessDef::ORDER_LISTING_STATUS_FROBIDDEN,
-                BusinessDef::ORDER_LISTING_STATUS_STOCK_LOCK,
-            ])
-            ->where('payment_method', $request->input('payment_method'))
-            ->first();
-        if ($existingOrderListing) {
-            return ApiResponse::error(ApiCode::ORDER_LISTING_PAYMENT_METHOD_LIMIT);
-        }
+            if (!$userAccount) {
+                throw new \Exception('', ApiCode::USER_NOT_FOUND);
+            }
 
-        $newOrderListing = DB::transaction(function() use ($request, $userId) {
+            // 再次余额检查（并发安全）
+            if ($request->input('amount') > $userAccount->available_balance) {
+                throw new \Exception('', ApiCode::USER_BALANCE_NOT_ENOUGH);
+            }
+
+            // 检查用户是否设置默认收款方式
+            $paymentMethod = UserPaymentMethod::where('status', BusinessDef::PAYMENT_METHOD_ACTIVE)
+                ->where('user_id', $userId)
+                ->where('payment_method', $request->input('payment_method'))
+                ->where('default_payment', BusinessDef::PAYMENT_METHOD_IS_DEFAULT)
+                ->first();
+
+            if (!$paymentMethod) {
+                throw new \Exception('', ApiCode::USER_PAYMENT_METHOD_NOT_SET);
+            }
+
+            // 锁住用户在同卖场的挂单
+            $existingOrderListing = OrderListing::where('user_id', $userId)
+                ->whereIn('status', [
+                    BusinessDef::ORDER_LISTING_STATUS_ONLINE,
+                    BusinessDef::ORDER_LISTING_STATUS_FROBIDDEN,
+                    BusinessDef::ORDER_LISTING_STATUS_STOCK_LOCK,
+                ])
+                ->where('payment_method', $request->input('payment_method'))
+                ->lockForUpdate()
+                ->first();
+
+            if ($existingOrderListing) {
+                throw new \Exception('', ApiCode::ORDER_LISTING_PAYMENT_METHOD_LIMIT);
+            }
+
             // 创建挂单
             $orderListing = OrderListing::create([
                 'user_id' => $userId,
@@ -90,22 +96,25 @@ class OrderListingController extends Controller
                 'remain_amount' => $request->input('amount'),
                 'min_sale_amount' => $request->input('min_sale_amount'),
                 'payment_method' => $request->input('payment_method'),
-                'status' => BusinessDef::ORDER_LISTING_STATUS_ONLINE, // 默认状态为在售
+                'status' => BusinessDef::ORDER_LISTING_STATUS_ONLINE,
             ]);
 
-            $userAccount = UserAccount::where('user_id', $userId)->first();
+            // 扣余额
             $userAccount->available_balance = bcsub($userAccount->available_balance, $request->input('amount'), 2);
             $userAccount->save();
 
-            return $orderListing;
-        });
+            DB::commit();
 
-        // 推送通知挂单更新
+        } catch (\Throwable $e) {
+            DB::rollBack();
+
+            return ApiResponse::error($e->getCode());
+        }
+
+        // 推送通知，减少锁持有
         event(new OrderListingUpdated());
 
-        return ApiResponse::success([
-            'id' => $newOrderListing->id,
-        ]);
+        return ApiResponse::success(['id' => $orderListing->id]);
     }
 
     public function getOrderListingByPage(Request $request)
@@ -195,7 +204,6 @@ class OrderListingController extends Controller
      */
     public function cancelOrderListing(Request $request)
     {
-        // 从中间件获取的用户ID
         $userId = $request->user_id_from_token ?? null;
         $id = $request->id ?? null;
 
@@ -207,45 +215,66 @@ class OrderListingController extends Controller
             return ApiResponse::error(ApiCode::ORDER_LISTING_NOT_FOUND);
         }
 
-        $orderListing = OrderListing::with('orders')->find($id);
-        if (!$orderListing) {
-            return ApiResponse::error(ApiCode::ORDER_LISTING_NOT_FOUND);
-        }
-
-        // 检查所有关联订单状态
-        $forbiddenStatuses = [
-            BusinessDef::ORDER_STATUS_WAIT_BUYER,
-            BusinessDef::ORDER_STATUS_WAIT_SELLER,
-            BusinessDef::ORDER_STATUS_ARGUE,
-        ];
-        foreach ($orderListing->orders as $order) {
-            if (in_array($order->status, $forbiddenStatuses)) {
-                return ApiResponse::error(ApiCode::ORDER_LISTING_CANCEL_FORBIDDEN);
-            }
-        }
-
         DB::beginTransaction();
+
         try {
+
+            // 加悲观锁
+            $orderListing = OrderListing::where('id', $id)
+                ->lockForUpdate()
+                ->with('orders')
+                ->first();
+
+            if (!$orderListing) {
+                throw new \Exception('', ApiCode::ORDER_LISTING_NOT_FOUND);
+            }
+
+            // 幂等：已取消则直接返回成功
+            if ($orderListing->status === BusinessDef::ORDER_LISTING_STATUS_CANCEL) {
+                DB::commit();
+                return ApiResponse::success([]);
+            }
+
+            // 检查是否存在禁止取消的订单状态
+            $forbiddenStatuses = [
+                BusinessDef::ORDER_STATUS_WAIT_BUYER,
+                BusinessDef::ORDER_STATUS_WAIT_SELLER,
+                BusinessDef::ORDER_STATUS_ARGUE,
+            ];
+
+            foreach ($orderListing->orders as $order) {
+                if (in_array($order->status, $forbiddenStatuses)) {
+                    throw new \Exception('', ApiCode::ORDER_LISTING_CANCEL_FORBIDDEN);
+                }
+            }
+
+            // 修改挂单状态
             $orderListing->status = BusinessDef::ORDER_LISTING_STATUS_CANCEL;
             $orderListing->save();
 
-            // 撤单需要返还用户冻结的资产
+            // 加悲观锁避免余额并发问题
             $userAccount = UserAccount::where('user_id', $userId)
+                ->lockForUpdate()
                 ->first();
-            
+
             if (!$userAccount) {
-                return ApiResponse::error(ApiCode::USER_NOT_FOUND);
+                throw new \Exception('', ApiCode::USER_NOT_FOUND);
             }
 
-            $userAccount->available_balance = bcadd($userAccount->available_balance, $orderListing->remain_amount, 2);
+            // 返还冻结金额
+            $userAccount->available_balance = bcadd(
+                $userAccount->available_balance,
+                $orderListing->remain_amount,
+                2
+            );
             $userAccount->save();
 
             DB::commit();
             return ApiResponse::success([]);
+
         } catch (\Throwable $e) {
             DB::rollBack();
-            // report($e);
-            return ApiResponse::error(ApiCode::OPERATION_FAIL);
+            return ApiResponse::error($e->getCode());
         }
     }
 }
