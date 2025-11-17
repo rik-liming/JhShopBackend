@@ -37,69 +37,56 @@ class WithdrawController extends Controller
             'payment_password.required' => '支付密码不能为空',
         ]);
 
-        // 从中间件获取的用户ID
-        $userId = $request->user_id_from_token ?? null;
-        $withdraw_address = $request->withdraw_address;
-        $amount = $request->amount;
-        $payment_password = $request->payment_password;
+        try {
+            $userId = $request->user_id_from_token ?? null;
+            if (!$userId) {
+                throw new \Exception('', ApiCode::USER_NOT_FOUND);
+            }
 
-        if (!$userId) {
-            return ApiResponse::error(ApiCode::USER_NOT_FOUND);
-        }
+            $amount = $request->amount;
+            $withdraw_address = $request->withdraw_address;
+            $payment_password = $request->payment_password;
 
-        $user = User::where('id', $userId)->first();
-        if (!$user) {
-            return ApiResponse::error(ApiCode::USER_NOT_FOUND);
-        }
+            DB::beginTransaction();
 
-        $config = PlatformConfig::first();
-        if (!$config) {
-            return ApiResponse::error(ApiCode::CONFIG_NOT_FOUND);
-        }
+            // 加锁用户 & 账户
+            $user = User::where('id', $userId)->lockForUpdate()->first();
+            $userAccount = UserAccount::where('user_id', $userId)->lockForUpdate()->first();
+            $config = PlatformConfig::lockForUpdate()->first();
 
-        $userAccount = UserAccount::where('user_id', $userId)->first();
-        if (!$userAccount) {
-            return ApiResponse::error(ApiCode::USER_ACCOUNT_NOT_FOUND);
-        }
+            if (!$user || !$userAccount) throw new \Exception('', ApiCode::USER_NOT_FOUND);
+            if (!$config) throw new \Exception('', ApiCode::CONFIG_NOT_FOUND);
 
-        if (!$userAccount->payment_password) {
-            return ApiResponse::error(ApiCode::USER_PAYMENT_PASSWORD_NOT_SET);
-        }
+            if (!$userAccount->payment_password) {
+                throw new \Exception('', ApiCode::USER_PAYMENT_PASSWORD_NOT_SET);
+            }
+            if (!Hash::check($payment_password, $userAccount->payment_password)) {
+                throw new \Exception('', ApiCode::USER_PAYMENT_PASSWORD_WRONG);
+            }
 
-        if (!Hash::check($payment_password, $userAccount->payment_password)) {
-            return ApiResponse::error(ApiCode::USER_PAYMENT_PASSWORD_WRONG);
-        }
+            // 校验可用余额
+            $totalExpense = bcadd($amount, $config->withdrawl_fee, 2);
+            if (bccomp($totalExpense, $userAccount->available_balance, 2) > 0) {
+                throw new \Exception('', ApiCode::USER_BALANCE_NOT_ENOUGH);
+            }
 
-        $totalExpense = bcadd($amount, $config->withdrawl_fee, 2);
-        if (bccomp($totalExpense, $userAccount->available_balance, 2) > 0) {
-            return ApiResponse::error(ApiCode::USER_BALANCE_NOT_ENOUGH);
-        }
+            // 生成 ID
+            $today = Carbon::now()->format('Ymd');
+            $transactionSequence = Redis::incr("transaction:{$today}:sequence");
+            $transaction_id = $today . '_' . str_pad($transactionSequence, 4, '0', STR_PAD_LEFT);
 
-        // transaction id
-        $today = Carbon::now()->format('Ymd');
-        $todayTransactionIncrKey = "transaction:{$today}:sequence";
-        $transactionSequence = Redis::incr($todayTransactionIncrKey);
+            $display_withdraw_id = Carbon::now()->format('YmdHis')
+                . str_pad(rand(0, 9999), 4, '0', STR_PAD_LEFT);
 
-        $formattedSequence = str_pad($transactionSequence, 4, '0', STR_PAD_LEFT); // 生成 3 位随机数，填充 0
-        $transaction_id = "${today}_${formattedSequence}";
+            $cnyAmount = ceil(bcmul($amount, $config->exchange_rate_platform, 2) * 100) / 100;
 
-        // display withdraw id
-        $date = Carbon::now()->format('YmdHis');
-        $randomNumber = str_pad(rand(0, 9999), 4, '0', STR_PAD_LEFT); // 生成 4 位随机数，填充 0
-        $display_withdraw_id = "${date}${randomNumber}";
-
-        $newWithdraw = DB::transaction(function() use ($request, $user, $userAccount, $config,
-            $amount, $totalExpense, $withdraw_address, $display_withdraw_id, $transaction_id) {
-
-            $cnyAmount = bcmul($amount, $config->exchange_rate_platform, 2);
-            $cnyAmount = ceil($cnyAmount * 100) / 100;
-
-            // 提交申请的同时，需要冻结提现金额
+            // 冻结提现金额
             $userAccount->available_balance = bcsub($userAccount->available_balance, $totalExpense, 2);
             $userAccount->save();
 
+            // 创建提现记录
             $withdraw = Withdraw::create([
-                'display_withdraw_id' => $display_withdraw_id, // 当前登录用户的ID
+                'display_withdraw_id' => $display_withdraw_id,
                 'user_id' => $user->id,
                 'user_name' => $user->user_name,
                 'amount' => $amount,
@@ -113,6 +100,7 @@ class WithdrawController extends Controller
                 'status' => BusinessDef::WITHDRAW_WAIT,
             ]);
 
+            // 财务记录
             FinancialRecord::create([
                 'transaction_id' => $transaction_id,
                 'user_id' => $user->id,
@@ -123,38 +111,37 @@ class WithdrawController extends Controller
                 'actual_amount' => 0.00,
                 'balance_before' => 0.00,
                 'balance_after' => 0.00,
-                'transaction_type'=> 'withdraw',
+                'transaction_type'=> BusinessDef::TRANSACTION_TYPE_WITHDRAW,
                 'reference_id' => $withdraw->id,
                 'display_reference_id' => $display_withdraw_id,
             ]);
 
-            return $withdraw;
-        });
+            DB::commit();
 
-        // 提交提现成功，推送消息给后台管理员
-        // business id
-        $today = Carbon::now()->format('Ymd');
-        $todayBusinessIncrKey = "business:{$today}:sequence";
-        $businessSequence = Redis::incr($todayBusinessIncrKey);
+            // 推送给管理员
+            $businessSequence = Redis::incr("business:{$today}:sequence");
+            $business_id = $today . '_' . str_pad($businessSequence, 4, '0', STR_PAD_LEFT);
 
-        $formattedSequence = str_pad($businessSequence, 4, '0', STR_PAD_LEFT); // 生成 3 位随机数，填充 0
-        $business_id = "${today}_${formattedSequence}";
+            AdminMessageHelper::pushMessage([
+                'business_id' => $business_id,
+                'business_type' => BusinessDef::ADMIN_BUSINESS_TYPE_WITHDRAW,
+                'reference_id' => $withdraw->id,
+                'title' => '',
+                'content' => '',
+            ]);
 
-        AdminMessageHelper::pushMessage([
-            'business_id' => $business_id,
-            'business_type' => BusinessDef::ADMIN_BUSINESS_TYPE_WITHDRAW,
-            'reference_id' => $newWithdraw->id,
-            'title' => '',
-            'content' => '',
-        ]);
+            event(new AdminBusinessUpdated());
 
-        // 通知管理员业务变动
-        event(new AdminBusinessUpdated());
+            return ApiResponse::success(['withdraw' => $withdraw]);
 
-        return ApiResponse::success([
-            'withdraw' => $newWithdraw,
-        ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('[createWithdraw] '.$e->getMessage());
+            return ApiResponse::error($e->getCode());
+        }
     }
+
+
 
     /**
      * 获取提现详情

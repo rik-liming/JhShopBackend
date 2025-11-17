@@ -63,80 +63,98 @@ class AdminWithdrawController extends Controller
     }
 
     /**
-     * 更新信息
+     * 更新提现信息（管理员使用）
      */
     public function updateWithdraw(Request $request)
     {
-        // 获取传入的更新参数
-        $status = $request->input('status', null);  // 状态
+        // 参数校验
+        $request->validate([
+            'id' => 'required|integer',
+            'status' => 'required|in:' . implode(',', [
+                BusinessDef::WITHDRAW_APPROVE,
+                BusinessDef::WITHDRAW_REJECT,
+            ]),
+        ], [
+            'id.required' => '提现ID不能为空',
+            'status.required' => '提现状态不能为空',
+        ]);
 
-        // 查找指定ID的用户
-        $withdraw = Withdraw::find($request->id);
+        $withdrawId = $request->input('id');
+        $newStatus = $request->input('status');
 
-        if (!$withdraw) {
-            return ApiResponse::error(ApiCode::WITHDRAW_NOT_FOUND);
-        }
+        try {
+            DB::beginTransaction();
 
-        // 更新用户信息
-        if ($withdraw->status !== $status) {
-            $withdraw->status = $status;
-        }
+            // 锁提现记录
+            $withdraw = Withdraw::lockForUpdate()->find($withdrawId);
+            if (!$withdraw) throw new ApiException(ApiCode::WITHDRAW_NOT_FOUND);
 
-        $userAccount = UserAccount::where('user_id', $withdraw->user_id)->first();
-        if (!$userAccount) {
-            return ApiResponse::error(ApiCode::USER_ACCOUNT_NOT_FOUND);
-        }
-        
-        $financeRecord = FinancialRecord::where('reference_id', $withdraw->id)
+            // 锁用户账户
+            $userAccount = UserAccount::lockForUpdate()
+                ->where('user_id', $withdraw->user_id)
+                ->first();
+            if (!$userAccount) throw new ApiException(ApiCode::USER_ACCOUNT_NOT_FOUND);
+
+            // 锁财务记录
+            $financeRecord = FinancialRecord::lockForUpdate()
+                ->where('reference_id', $withdraw->id)
                 ->where('transaction_type', BusinessDef::TRANSACTION_TYPE_WITHDRAW)
                 ->first();
+            if (!$financeRecord) throw new ApiException(ApiCode::FINANCIAL_RECORD_NOT_FOUND);
 
-        $newWithdraw = DB::transaction(function() use ($withdraw, $financeRecord, $userAccount) {
+            // 幂等处理
+            if ($withdraw->status !== $newStatus) {
+                $withdraw->status = $newStatus;
+                $totalExpense = bcadd($withdraw->amount, $withdraw->fee, 2);
 
-            $totalExpense = bcadd($withdraw->amount, $withdraw->fee, 2);
+                if ($newStatus === BusinessDef::WITHDRAW_APPROVE) {
+                    // 审核通过，扣除总余额
+                    $before = $userAccount->total_balance;
+                    $after  = bcsub($before, $totalExpense, 2);
 
-            // 如果通过审核，需要进行变动操作
-            if ($withdraw->status === BusinessDef::WITHDRAW_APPROVE) {
+                    $userAccount->total_balance = $after;
 
-                // 减钱
-                $balanceBefore = $userAccount->total_balance;
-                $balanceAfter = bcsub($userAccount->total_balance, $totalExpense, 2);
+                    $withdraw->balance_before = $before;
+                    $withdraw->balance_after  = $after;
 
-                // 注意，available余额是不用变动的，因为已经冻结过了
-                $userAccount->total_balance = $balanceAfter;
+                    $financeRecord->balance_before = $before;
+                    $financeRecord->balance_after  = $after;
+                    $financeRecord->actual_amount  = -$totalExpense;
+                    $financeRecord->status         = BusinessDef::TRANSACTION_COMPLETED;
 
-                // 更新信息
-                $withdraw->balance_before = $balanceBefore;
-                $withdraw->balance_after = $balanceAfter;
-                
-                // 更新财务变动
-                $financeRecord->balance_before = $balanceBefore;
-                $financeRecord->balance_after = $balanceAfter;
-                $financeRecord->actual_amount = -$totalExpense;
-                $financeRecord->status = BusinessDef::TRANSACTION_COMPLETED;
-            } else if ($withdraw->status === BusinessDef::WITHDRAW_REJECT) {
-                // 驳回需要把冻结的可用资金释放
-                $userAccount->available_balance = bcadd($userAccount->available_balance, $totalExpense, 2);
+                } elseif ($newStatus === BusinessDef::WITHDRAW_REJECT) {
+                    // 驳回，返还冻结资金到 available_balance
+                    $userAccount->available_balance = bcadd($userAccount->available_balance, $totalExpense, 2);
 
-                // 更新财务变动
-                $financeRecord->balance_before = $userAccount->total_balance;
-                $financeRecord->balance_after = $userAccount->total_balance;
-                $financeRecord->actual_amount = 0.00;
-                $financeRecord->status = BusinessDef::TRANSACTION_COMPLETED;
+                    // 财务记录更新
+                    $financeRecord->balance_before = $userAccount->total_balance;
+                    $financeRecord->balance_after  = $userAccount->total_balance;
+                    $financeRecord->actual_amount  = 0.00;
+                    $financeRecord->status         = BusinessDef::TRANSACTION_COMPLETED;
+                }
+
+                $userAccount->save();
+                $withdraw->save();
+                $financeRecord->save();
             }
 
-            // 无论是否通过，都需要更新充值信息
-            $userAccount->save();
+            DB::commit();
 
-            $withdraw->save();
+            // 返回给事务外，因为要用于推送和事件
+            $updatedWithdraw = $withdraw;
 
-            $financeRecord->save();
+        } catch (ApiException $e) {
+            DB::rollBack();
+            return ApiResponse::error($e->getCode());
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('[updateWithdraw] '.$e->getMessage());
+            return ApiResponse::error(ApiCode::OPERATION_FAIL);
+        }
 
-            return $withdraw;
-        });
+        // -------- 事务外发送消息通知（幂等） --------
 
-        // 添加消息队列
-        MessageHelper::pushMessage($withdraw->user_id, [
+        MessageHelper::pushMessage($updatedWithdraw->user_id, [
             'transaction_id' => $financeRecord->transaction_id,
             'transaction_type' => $financeRecord->transaction_type,
             'reference_id' => $financeRecord->reference_id,
@@ -144,16 +162,17 @@ class AdminWithdrawController extends Controller
             'content' => '',
         ]);
 
-        // 通知用户资产变动
         event(new TransactionUpdated(
-            $withdraw->user_id,
+            $updatedWithdraw->user_id,
             $financeRecord->transaction_id,
             $financeRecord->transaction_type,
             $financeRecord->reference_id,
         ));
 
         return ApiResponse::success([
-            'withdraw' => $withdraw
+            'withdraw' => $updatedWithdraw
         ]);
     }
+
+
 }

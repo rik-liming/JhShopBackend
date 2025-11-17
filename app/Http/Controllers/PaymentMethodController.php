@@ -240,11 +240,9 @@ class PaymentMethodController extends Controller
 
         $data = $request->input(); // 前端传的数组 [{id, default_payment}, ...]
 
-        \Log::info("get info...");
         if (!is_array($data) || empty($data)) {
             return ApiResponse::error(ApiCode::USER_PAYMENT_METHOD_SET_FAIL);
         }
-        \Log::info("get info 2...");
 
         try {
             DB::beginTransaction();
