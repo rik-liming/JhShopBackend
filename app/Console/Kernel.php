@@ -18,6 +18,7 @@ class Kernel extends ConsoleKernel
         // $schedule->command('inspire')->hourly();
         $schedule->command('orders:check')->everyMinute();
         $schedule->command('report:daily')->dailyAt('00:30');
+        $schedule->command('adminMessage:clear')->dailyAt('05:00');
     }
 
     /**

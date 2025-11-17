@@ -19,17 +19,6 @@ class AdminOrderController extends Controller
 {
     public function getOrderByPage(Request $request)
     {
-        // 验证输入参数
-        $request->validate([
-            'payment_method' => 'required|in:' . implode(',', [
-                BusinessDef::PAYMENT_METHOD_ALIPAY,
-                BusinessDef::PAYMENT_METHOD_WECHAT,
-                BusinessDef::PAYMENT_METHOD_BANK,
-            ]),
-        ], [
-            'payment_method.required' => '卖场不能为空'
-        ]);
-
         // 获取分页参数
         $page = $request->input('page', 1);  // 当前页，默认是第1页
         $pageSize = $request->input('page_size', 100);  // 每页显示的记录数，默认是10条

@@ -118,4 +118,59 @@ class AdminMessageHelper
     {
         return (int) (Redis::get(self::getUnreadKey()) ?: 0);
     }
+
+    public static function clearReadMessages()
+    {
+        $keyList = self::getListKey();
+        $keyIndex = self::getIndexKey();
+        $keyUnread = self::getUnreadKey();
+
+        // 读取全部消息
+        $messages = Redis::lrange($keyList, 0, -1);
+
+        if (empty($messages)) {
+            // 无消息直接清空索引和未读
+            Redis::del($keyIndex);
+            Redis::set($keyUnread, 0);
+            return;
+        }
+
+        // 过滤掉所有 status = read 的消息
+        $filtered = [];
+        foreach ($messages as $msgJson) {
+            $msg = json_decode($msgJson, true);
+            if (!isset($msg['status']) || $msg['status'] !== 'read') {
+                $filtered[] = $msgJson;
+            }
+        }
+
+        // 重建消息列表
+        Redis::del($keyList);  
+        if (!empty($filtered)) {
+            // lpush 会反向，所以使用 rpush 保持原顺序
+            Redis::rpush($keyList, ...$filtered);
+        }
+
+        // 重新生成 business_id → index 映射
+        Redis::del($keyIndex);
+
+        $newUnreadCount = 0;
+
+        $newList = Redis::lrange($keyList, 0, -1);
+        foreach ($newList as $i => $json) {
+            $m = json_decode($json, true);
+
+            if (isset($m['business_id'])) {
+                Redis::hset($keyIndex, $m['business_id'], $i);
+            }
+
+            // 统计未读或 updated（因为 updated 也属于未处理）
+            if (!isset($m['status']) || $m['status'] === 'unread' || $m['status'] === 'updated') {
+                $newUnreadCount++;
+            }
+        }
+
+        // 更新未读计数
+        Redis::set($keyUnread, $newUnreadCount);
+    }
 }
