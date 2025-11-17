@@ -65,87 +65,106 @@ class AdminRechargeController extends Controller
      */
     public function updateRecharge(Request $request)
     {
-        // 获取传入的更新参数
-        $status = $request->input('status', null);  // 状态
+        // 验证输入参数
+        $request->validate([
+            'id' => 'required|integer',
+            'status' => 'required|in:' . implode(',', [
+                BusinessDef::RECHARGE_APPROVE,
+                BusinessDef::RECHARGE_REJECT,
+            ]),
+        ], [
+            'id.required' => '充值ID不能为空',
+            'status.required' => '充值状态不能为空',
+        ]);
 
-        // 查找指定ID的用户
-        $recharge = Recharge::find($request->id);
+        $rechargeId = $request->input('id');
+        $newStatus = $request->input('status');
 
-        if (!$recharge) {
-            return ApiResponse::error(ApiCode::RECHARGE_NOT_FOUND);
-        }
+        try {
+            // 开启事务
+            DB::beginTransaction();
 
-        // 更新用户信息
-        if ($status !== $recharge->status) {
-            $recharge->status = $status;
-        }
-
-        $userAccount = UserAccount::where('user_id', $recharge->user_id)->first();
-        if (!$userAccount) {
-            return ApiResponse::error(ApiCode::USER_ACCOUNT_NOT_FOUND);
-        }
-        
-        $financeRecord = FinancialRecord::where('reference_id', $recharge->id)
-                ->where('transaction_type', BusinessDef::TRANSACTION_TYPE_RECHARGE)
-                ->first();
-
-        $newRecharge = DB::transaction(function() use ($recharge, $financeRecord, $userAccount) {
-
-            // 如果通过审核，需要进行变动操作
-            if ($recharge->status === BusinessDef::RECHARGE_APPROVE) {
-
-                // 加钱
-                $balanceBefore = $userAccount->total_balance;
-                $balanceAfter = bcadd($userAccount->total_balance, $recharge->amount, 2);
-
-                $userAccount->total_balance = $balanceAfter;
-                $userAccount->available_balance = bcadd($userAccount->available_balance, $recharge->amount, 2);
-                $userAccount->save();
-
-                // 更新充值信息
-                $recharge->balance_before = $balanceBefore;
-                $recharge->balance_after = $balanceAfter;
-                
-                // 更新财务变动
-                $financeRecord->balance_before = $balanceBefore;
-                $financeRecord->balance_after = $balanceAfter;
-                $financeRecord->actual_amount = $recharge->amount;
-                $financeRecord->status = BusinessDef::TRANSACTION_COMPLETED;
-            } else if ($recharge->status === BusinessDef::RECHARGE_REJECT) {
-                // 更新财务变动
-                $financeRecord->balance_before = $userAccount->total_balance;
-                $financeRecord->balance_after = $userAccount->total_balance;
-                $financeRecord->actual_amount = 0.00;
-                $financeRecord->status = BusinessDef::TRANSACTION_COMPLETED;
+            // 锁定充值记录，防止并发修改
+            $recharge = Recharge::lockForUpdate()->find($rechargeId);
+            if (!$recharge) {
+                throw new \Exception('充值记录不存在', ApiCode::RECHARGE_NOT_FOUND);
             }
 
-            // 无论是否通过，都需要更新充值信息
-            $recharge->save();
+            $userAccount = UserAccount::lockForUpdate()->where('user_id', $recharge->user_id)->first();
+            if (!$userAccount) {
+                throw new \Exception('用户账户不存在', ApiCode::USER_ACCOUNT_NOT_FOUND);
+            }
 
-            $financeRecord->save();
+            $financeRecord = FinancialRecord::lockForUpdate()
+                ->where('reference_id', $recharge->id)
+                ->where('transaction_type', BusinessDef::TRANSACTION_TYPE_RECHARGE)
+                ->first();
+            if (!$financeRecord) {
+                throw new \Exception('财务记录不存在', ApiCode::FINANCIAL_RECORD_NOT_FOUND);
+            }
 
-            return $recharge;
-        });
+            // 更新充值状态及账户
+            if ($newStatus !== $recharge->status) {
+                $recharge->status = $newStatus;
 
-        // 添加消息队列
-        MessageHelper::pushMessage($recharge->user_id, [
-            'transaction_id' => $financeRecord->transaction_id,
-            'transaction_type' => $financeRecord->transaction_type,
-            'reference_id' => $financeRecord->reference_id,
-            'title' => '',
-            'content' => '',
-        ]);
+                if ($newStatus === BusinessDef::RECHARGE_APPROVE) {
+                    $balanceBefore = $userAccount->total_balance;
+                    $balanceAfter = bcadd($balanceBefore, $recharge->amount, 2);
 
-        // 通知用户资产变动
-        event(new TransactionUpdated(
-            $recharge->user_id,
-            $financeRecord->transaction_id,
-            $financeRecord->transaction_type,
-            $financeRecord->reference_id,
-        ));
+                    $userAccount->total_balance = $balanceAfter;
+                    $userAccount->available_balance = bcadd($userAccount->available_balance, $recharge->amount, 2);
+                    $userAccount->save();
 
-        return ApiResponse::success([
-            'recharge' => $recharge
-        ]);
+                    $recharge->balance_before = $balanceBefore;
+                    $recharge->balance_after = $balanceAfter;
+
+                    $financeRecord->balance_before = $balanceBefore;
+                    $financeRecord->balance_after = $balanceAfter;
+                    $financeRecord->actual_amount = $recharge->amount;
+                    $financeRecord->status = BusinessDef::TRANSACTION_COMPLETED;
+                } elseif ($newStatus === BusinessDef::RECHARGE_REJECT) {
+                    $financeRecord->balance_before = $userAccount->total_balance;
+                    $financeRecord->balance_after = $userAccount->total_balance;
+                    $financeRecord->actual_amount = 0.00;
+                    $financeRecord->status = BusinessDef::TRANSACTION_COMPLETED;
+                }
+
+                $recharge->save();
+                $financeRecord->save();
+            }
+
+            // 提交事务
+            DB::commit();
+
+            // 推送消息通知用户
+            MessageHelper::pushMessage($recharge->user_id, [
+                'transaction_id' => $financeRecord->transaction_id,
+                'transaction_type' => $financeRecord->transaction_type,
+                'reference_id' => $financeRecord->reference_id,
+                'title' => '',
+                'content' => '',
+            ]);
+
+            // 通知资产变动
+            event(new TransactionUpdated(
+                $recharge->user_id,
+                $financeRecord->transaction_id,
+                $financeRecord->transaction_type,
+                $financeRecord->reference_id,
+            ));
+
+            return ApiResponse::success([
+                'recharge' => $recharge,
+            ]);
+
+        } catch (\Exception $e) {
+            // 回滚事务
+            DB::rollBack();
+
+            // 抛出自定义异常给统一处理
+            return ApiResponse::error($e->getCode());
+        }
     }
+
+
 }

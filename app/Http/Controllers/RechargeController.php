@@ -35,86 +35,71 @@ class RechargeController extends Controller
             'screenshot.image' => '截图必须是图片',
         ]);
 
-        // 从中间件获取的用户ID
         $userId = $request->user_id_from_token ?? null;
-
         if (!$userId) {
             return ApiResponse::error(ApiCode::USER_NOT_FOUND);
         }
 
-        $user = User::where('id', $userId)->first();
-        if (!$user) {
-            return ApiResponse::error(ApiCode::USER_NOT_FOUND);
-        }
+        DB::beginTransaction();
+        try {
+            // 查询用户和账户并加锁，保证数据安全
+            $user = User::where('id', $userId)->lockForUpdate()->first();
+            if (!$user) {
+                throw new \Exception('', ApiCode::USER_NOT_FOUND);
+            }
 
-        // 查找是否存在待处理的充值，不允许充值期间再次申请
-        $existingRecharge = Recharge::where('user_id', $userId)
-            ->where('status', BusinessDef::RECHARGE_WAIT)
-            ->first();
-        if ($existingRecharge) {
-            return ApiResponse::error(ApiCode::RECHARGE_REQUEST_LIMIT);
-        }
+            $userAccount = UserAccount::where('user_id', $userId)->lockForUpdate()->first();
+            if (!$userAccount) {
+                throw new \Exception('', ApiCode::USER_ACCOUNT_NOT_FOUND);
+            }
 
-        $userAccount = UserAccount::where('user_id', $userId)->first();
-        if (!$userAccount) {
-            return ApiResponse::error(ApiCode::USER_ACCOUNT_NOT_FOUND);
-        }
+            // 检查是否存在待处理的充值
+            $existingRecharge = Recharge::where('user_id', $userId)
+                ->where('status', BusinessDef::RECHARGE_WAIT)
+                ->first();
+            if ($existingRecharge) {
+                throw new \Exception('', ApiCode::RECHARGE_REQUEST_LIMIT);
+            }
 
-        $config = PlatformConfig::first();
-        if (!$config) {
-            return ApiResponse::error(ApiCode::CONFIG_NOT_FOUND);
-        }
+            $config = PlatformConfig::first();
+            if (!$config) {
+                throw new \Exception('', ApiCode::CONFIG_NOT_FOUND);
+            }
 
-        // transaction id
-        $today = Carbon::now()->format('Ymd');
-        $todayTransactionIncrKey = "transaction:{$today}:sequence";
-        $transactionSequence = Redis::incr($todayTransactionIncrKey);
+            // 生成 transaction_id
+            $today = Carbon::now()->format('Ymd');
+            $transactionSequence = Redis::incr("transaction:{$today}:sequence");
+            $transaction_id = $today . '_' . str_pad($transactionSequence, 4, '0', STR_PAD_LEFT);
 
-        $formattedSequence = str_pad($transactionSequence, 4, '0', STR_PAD_LEFT); // 生成 3 位随机数，填充 0
-        $transaction_id = "${today}_${formattedSequence}";
+            // display recharge id
+            $display_recharge_id = Carbon::now()->format('YmdHis') . str_pad(rand(0, 9999), 4, '0', STR_PAD_LEFT);
 
-        // display recharge id
-        $date = Carbon::now()->format('YmdHis');
-        $randomNumber = str_pad(rand(0, 9999), 4, '0', STR_PAD_LEFT); // 生成 4 位随机数，填充 0
-        $display_recharge_id = "${date}${randomNumber}";
+            $amount = $request->amount;
 
-        $amount = $request->amount;
+            // 保存截图
+            $image = $request->file('screenshot');
+            $imageDirectory = '/data/images';
+            if (!file_exists($imageDirectory)) {
+                mkdir($imageDirectory, 0777, true);
+            }
+            $imageName = time() . '_' . uniqid() . '.' . $image->getClientOriginalExtension();
+            $image->move($imageDirectory, $imageName);
+            $recharge_images = $imageDirectory . '/' . $imageName;
 
-        // 处理截图保存逻辑
-        $image = $request->file('screenshot');
+            // 计算人民币金额
+            $cnyAmount = ceil(bcmul($amount, $config->exchange_rate_platform, 2) * 100) / 100;
 
-        // 确保服务器上的 /data/images 目录存在
-        $imageDirectory = '/data/images';
-        if (!file_exists($imageDirectory)) {
-            // 如果目录不存在，则创建它
-            mkdir($imageDirectory, 0777, true);
-        }
-
-        // 为图片生成一个唯一的文件名
-        $imageName = time() . '_' . uniqid() . '.' . $image->getClientOriginalExtension();
-
-        // 将图片保存到 /data/images 目录
-        $image->move($imageDirectory, $imageName);
-
-        // 记录图片路径
-        $recharge_images = $imageDirectory . '/' . $imageName;
-
-        $newRecharge = DB::transaction(function() use ($request, $userId, 
-            $user, $config, $userAccount, $amount, $recharge_images, $transaction_id, $display_recharge_id) {
-
-            $cnyAmount = bcmul($amount, $config->exchange_rate_platform, 2);
-            $cnyAmount = ceil($cnyAmount * 100) / 100;
-
+            // 创建充值记录
             $recharge = Recharge::create([
                 'display_recharge_id' => $display_recharge_id,
                 'user_id' => $userId,
                 'user_name' => $user->user_name,
                 'amount' => $amount,
                 'exchange_rate' => $config->exchange_rate_platform,
-                'cny_amount' => $cnyAmount, 
+                'cny_amount' => $cnyAmount,
                 'actual_amount' => 0.00,
                 'recharge_address' => $config->payment_address,
-                'recharge_images' => $recharge_images, // text 类型字段，传递空字符串
+                'recharge_images' => $recharge_images,
                 'balance_before' => 0.00,
                 'balance_after' => 0.00,
                 'status' => BusinessDef::RECHARGE_WAIT,
@@ -136,35 +121,30 @@ class RechargeController extends Controller
                 'description' => "",
             ]);
 
-            return $recharge;
-        });
-
-        if (!$newRecharge) {
-            return ApiResponse::error(ApiCode::RECHARGE_REQUEST_FAIL);
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('充值失败: ' . $e->getMessage());
+            // return ApiResponse::error(ApiCode::RECHARGE_REQUEST_FAIL, $e->getMessage());
+            return ApiResponse::error($e->getCode());
         }
 
-        // 提交充值成功，推送消息给后台管理员
-        // business id
-        $today = Carbon::now()->format('Ymd');
-        $todayBusinessIncrKey = "business:{$today}:sequence";
-        $businessSequence = Redis::incr($todayBusinessIncrKey);
-
-        $formattedSequence = str_pad($businessSequence, 4, '0', STR_PAD_LEFT); // 生成 3 位随机数，填充 0
-        $business_id = "${today}_${formattedSequence}";
+        // 推送消息给后台管理员
+        $businessSequence = Redis::incr("business:{$today}:sequence");
+        $business_id = $today . '_' . str_pad($businessSequence, 4, '0', STR_PAD_LEFT);
 
         AdminMessageHelper::pushMessage([
             'business_id' => $business_id,
             'business_type' => BusinessDef::ADMIN_BUSINESS_TYPE_RECHARGE,
-            'reference_id' => $newRecharge->id,
+            'reference_id' => $recharge->id,
             'title' => '',
             'content' => '',
         ]);
 
-        // 通知管理员业务变动
         event(new AdminBusinessUpdated());
 
         return ApiResponse::success([
-            'recharge' => $newRecharge,
+            'recharge' => $recharge,
         ]);
     }
 
