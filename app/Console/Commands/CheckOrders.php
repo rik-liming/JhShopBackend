@@ -83,86 +83,115 @@ class CheckOrders extends Command
         \Log::info("[CronCheckOrders], {$dealCount} orders marked as argued at " . now(), ['order_ids' => $orderIds]);
 	}
 
-	protected function doCancelOrderLogic($orderId) {
-		DB::beginTransaction();
+	protected function doCancelOrderLogic($orderId)
+    {
+        DB::beginTransaction();
         try {
-			$order = Order::where('id', $orderId)->first();
-			if ($order->status !== BusinessDef::ORDER_STATUS_WAIT_BUYER) {
-				return;
-			}
 
-			// 变更订单状态
-			$order->status = BusinessDef::ORDER_STATUS_EXPIRED;
-			$order->save();
+            // 1) 悲观锁锁住订单（防止并发取消）
+            $order = Order::where('id', $orderId)
+                ->lockForUpdate()
+                ->first();
 
-            // 恢复挂单状态
+            if (!$order || $order->status !== BusinessDef::ORDER_STATUS_WAIT_BUYER) {
+                DB::rollBack();
+                return;
+            }
+
+            // 2) 悲观锁锁住挂单（防止 remain_amount 被并发修改）
             $orderListing = OrderListing::where('id', $order->order_listing_id)
-            ->first();
+                ->lockForUpdate()
+                ->first();
 
+            if (!$orderListing) {
+                DB::rollBack();
+                \Log::error("[ExpireOrder] Listing not found, ID: {$order->order_listing_id}");
+                return ['success' => false, 'error' => 'Listing not found'];
+            }
+
+            // 3) 更新订单状态
+            $order->status = BusinessDef::ORDER_STATUS_EXPIRED;
+            $order->save();
+
+            // 4) 恢复挂单库存
             $orderListing->remain_amount = bcadd($orderListing->remain_amount, $order->amount, 2);
-            if ($orderListing->status == BusinessDef::ORDER_LISTING_STATUS_STOCK_LOCK) { // 如果是因为库存冻结下架，需要恢复上架
+
+            if ($orderListing->status == BusinessDef::ORDER_LISTING_STATUS_STOCK_LOCK) {
                 $orderListing->status = BusinessDef::ORDER_LISTING_STATUS_ONLINE;
             }
+
             $orderListing->save();
 
             DB::commit();
             return ['success' => true, 'date' => now()];
+
         } catch (\Throwable $e) {
             DB::rollBack();
             \Log::error('[ExpireOrder] error occurred: ' . $e->getMessage());
             return ['success' => false, 'error' => $e->getMessage()];
         }
     }
+
     
-    protected function doArgueOrderLogic($orderId) {
-		DB::beginTransaction();
+    protected function doArgueOrderLogic($orderId)
+    {
+        DB::beginTransaction();
         try {
-			$order = Order::where('id', $orderId)->first();
-			if ($order->status !== BusinessDef::ORDER_STATUS_WAIT_SELLER) {
-				return;
-			}
 
-			// 变更订单状态
-			$order->status = BusinessDef::ORDER_STATUS_ARGUE;
-			$order->save();
+            // 加悲观锁避免并发争议处理
+            $order = Order::where('id', $orderId)
+                ->lockForUpdate()
+                ->first();
 
-            DB::commit();
-
-            // 存在争议订单，推送消息给后台管理员
-            // business id
-            $today = Carbon::now()->format('Ymd');
-            $todayBusinessIncrKey = "business:{$today}:sequence";
-            $businessSequence = Redis::incr($todayBusinessIncrKey);
-
-            $formattedSequence = str_pad($businessSequence, 4, '0', STR_PAD_LEFT); // 生成 3 位随机数，填充 0
-            $business_id = "${today}_${formattedSequence}";
-
-            $businessType = '';
-            switch ($order->type) {
-                case BusinessDef::ORDER_TYPE_NORMAL:
-                    $businessType = BusinessDef::ADMIN_BUSINESS_TYPE_ORDER_ARGUE;
-                    break;
-                case BusinessDef::ORDER_TYPE_AUTO:
-                    $businessType = BusinessDef::ADMIN_BUSINESS_TYPE_AUTO_ORDER_ARGUE;
-                    break;
+            if (!$order || $order->status !== BusinessDef::ORDER_STATUS_WAIT_SELLER) {
+                DB::rollBack();
+                return;
             }
 
-            AdminMessageHelper::pushMessage([
-                'business_id' => $business_id,
-                'business_type' => $businessType,
-                'reference_id' => $order->id,
-                'title' => '',
-                'content' => '',
-            ]);
+            // 更新订单状态为争议
+            $order->status = BusinessDef::ORDER_STATUS_ARGUE;
+            $order->save();
 
-            // 通知管理员业务变动
-            event(new AdminBusinessUpdated());
+            DB::commit(); // 事务到此完成
 
-            return ['success' => true, 'date' => now()];
         } catch (\Throwable $e) {
             DB::rollBack();
-            \Log::error('[ExpireOrder] error occurred: ' . $e->getMessage());
+            \Log::error('[ArgueOrder] error occurred: ' . $e->getMessage());
             return ['success' => false, 'error' => $e->getMessage()];
         }
+
+        /**
+         * 事务提交后执行以下逻辑
+         * 避免锁占用过久，提高吞吐量
+         */
+
+        // 生成业务 ID（当天自增）
+        $today = Carbon::now()->format('Ymd');
+        $todayBusinessIncrKey = "business:{$today}:sequence";
+        $businessSequence = Redis::incr($todayBusinessIncrKey);
+        $formattedSequence = str_pad($businessSequence, 4, '0', STR_PAD_LEFT);
+        $business_id = "{$today}_{$formattedSequence}";
+
+        // 根据订单类型选择业务类型
+        $businessType = match ($order->type) {
+            BusinessDef::ORDER_TYPE_NORMAL => BusinessDef::ADMIN_BUSINESS_TYPE_ORDER_ARGUE,
+            BusinessDef::ORDER_TYPE_AUTO => BusinessDef::ADMIN_BUSINESS_TYPE_AUTO_ORDER_ARGUE,
+            default => BusinessDef::ADMIN_BUSINESS_TYPE_ORDER_ARGUE,
+        };
+
+        // 推送消息给管理员
+        AdminMessageHelper::pushMessage([
+            'business_id' => $business_id,
+            'business_type' => $businessType,
+            'reference_id' => $order->id,
+            'title' => '',
+            'content' => '',
+        ]);
+
+        // 通知管理员业务变动
+        event(new AdminBusinessUpdated());
+
+        return ['success' => true, 'date' => now()];
     }
+
 }

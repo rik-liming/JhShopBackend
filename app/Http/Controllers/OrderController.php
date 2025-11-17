@@ -81,20 +81,12 @@ class OrderController extends Controller
             return ApiResponse::error(ApiCode::CONFIG_NOT_FOUND);
         }
         
-        $currentExchangeRate = 7.25;
-        switch ($orderListing->payment_method) {
-            case BusinessDef::PAYMENT_METHOD_ALIPAY:
-                $currentExchangeRate = $config->exchange_rate_alipay;
-                break;
-            case BusinessDef::PAYMENT_METHOD_WECHAT:
-                $currentExchangeRate = $config->exchange_rate_wechat;
-                break;
-            case BusinessDef::PAYMENT_METHOD_BANK:
-                $currentExchangeRate = $config->exchange_rate_bank;
-                break;
-            default:
-                break;
-        }
+        $currentExchangeRate = match ($orderListing->payment_method) {
+            BusinessDef::PAYMENT_METHOD_ALIPAY => $config->exchange_rate_alipay,
+            BusinessDef::PAYMENT_METHOD_WECHAT => $config->exchange_rate_wechat,
+            BusinessDef::PAYMENT_METHOD_BANK   => $config->exchange_rate_bank,
+            default => 7.25,
+        };
 
         // 计算得到cny对应的amount
         $amount = bcdiv($request->cny_amount, $currentExchangeRate, 2);
@@ -124,10 +116,29 @@ class OrderController extends Controller
 
         try {
 
-            // display order id
-            $date = Carbon::now()->format('YmdHis');
-            $randomNumber = str_pad(rand(0, 9999), 4, '0', STR_PAD_LEFT); // 生成 4 位随机数，填充 0
-            $display_order_id = "${date}${randomNumber}";
+            // 在事务中重新获取挂单 + 悲观锁
+            // 避免并发更新库存造成超卖
+            $orderListing = OrderListing::where('id', $request->order_listing_id)
+                ->lockForUpdate()     // 加悲观锁
+                ->first();
+
+            // 再次检查库存
+            if ($orderListing->remain_amount < $amount) {
+                DB::rollBack();
+                return ApiResponse::error(ApiCode::ORDER_LISTING_AMOUNT_NOT_ENOUGH);
+            }
+
+            // 无限重试直到生成一个不存在的 display_order_id
+            while (true) {
+                $date = Carbon::now()->format('YmdHis');
+                $randomNumber = str_pad(rand(0, 9999), 4, '0', STR_PAD_LEFT);
+                $display_order_id = "${date}${randomNumber}";
+
+                // 如果数据库不存在这个 ID，就 break
+                if (!Order::where('display_order_id', $display_order_id)->exists()) {
+                    break;
+                }
+            }
 
             // 创建订单记录
             $order = new Order([
@@ -246,20 +257,12 @@ class OrderController extends Controller
             return ApiResponse::error(ApiCode::CONFIG_NOT_FOUND);
         }
         
-        $currentExchangeRate = 7.25;
-        switch ($payment_method) {
-            case BusinessDef::PAYMENT_METHOD_ALIPAY:
-                $currentExchangeRate = $config->exchange_rate_alipay;
-                break;
-            case BusinessDef::PAYMENT_METHOD_WECHAT:
-                $currentExchangeRate = $config->exchange_rate_wechat;
-                break;
-            case BusinessDef::PAYMENT_METHOD_BANK:
-                $currentExchangeRate = $config->exchange_rate_bank;
-                break;
-            default:
-                break;
-        }
+        $currentExchangeRate = match ($payment_method) {
+            BusinessDef::PAYMENT_METHOD_ALIPAY => $config->exchange_rate_alipay,
+            BusinessDef::PAYMENT_METHOD_WECHAT => $config->exchange_rate_wechat,
+            BusinessDef::PAYMENT_METHOD_BANK   => $config->exchange_rate_bank,
+            default => 7.25,
+        };
 
         // 计算得到cny对应的amount
         $amount = bcdiv($cny_amount, $currentExchangeRate, 2);
@@ -304,10 +307,29 @@ class OrderController extends Controller
 
         try {
 
-            // display order id
-            $date = Carbon::now()->format('YmdHis');
-            $randomNumber = str_pad(rand(0, 9999), 4, '0', STR_PAD_LEFT); // 生成 4 位随机数，填充 0
-            $display_order_id = "${date}${randomNumber}";
+            // 在事务中重新获取挂单 + 悲观锁
+            // 避免并发更新库存造成超卖
+            $matchedOrderListing = OrderListing::where('id', $matchedOrderListing->id)
+                ->lockForUpdate()     // 加悲观锁
+                ->first();
+
+            // 再次检查库存
+            if ($matchedOrderListing->remain_amount < $amount) {
+                DB::rollBack();
+                return ApiResponse::error(ApiCode::ORDER_LISTING_AMOUNT_NOT_ENOUGH);
+            }
+
+            // 无限重试直到生成一个不存在的 display_order_id
+            while (true) {
+                $date = Carbon::now()->format('YmdHis');
+                $randomNumber = str_pad(rand(0, 9999), 4, '0', STR_PAD_LEFT);
+                $display_order_id = "${date}${randomNumber}";
+
+                // 如果数据库不存在这个 ID，就 break
+                if (!Order::where('display_order_id', $display_order_id)->exists()) {
+                    break;
+                }
+            }
 
             // 创建订单记录
             $order = new Order([
@@ -321,7 +343,7 @@ class OrderController extends Controller
                 'buy_account_number' => '',
                 'buy_bank_name' => '',
                 'buy_issue_bank_name' => '',
-                'sell_user_id' => $orderListing->user_id,
+                'sell_user_id' => $matchedOrderListing->user_id,
                 'sell_account_name' => $paymentMethod->account_name,
                 'sell_account_number' => $paymentMethod->account_number,
                 'sell_qr_code' => $paymentMethod->qr_code,
@@ -344,13 +366,13 @@ class OrderController extends Controller
             $order->save();
 
             // 更新挂单的剩余库存
-            $orderListing->remain_amount = bcsub($orderListing->remain_amount, $amount, 2);
+            $matchedOrderListing->remain_amount = bcsub($matchedOrderListing->remain_amount, $amount, 2);
 
             // 卖完自动下架
-            if ($orderListing->remain_amount < 10) {
-                $orderListing->status = BusinessDef::ORDER_LISTING_STATUS_STOCK_LOCK;
+            if ($matchedOrderListing->remain_amount < 10) {
+                $matchedOrderListing->status = BusinessDef::ORDER_LISTING_STATUS_STOCK_LOCK;
             }
-            $orderListing->save();
+            $matchedOrderListing->save();
 
             // 提交事务
             DB::commit();
@@ -508,160 +530,196 @@ class OrderController extends Controller
             return ApiResponse::error(ApiCode::USER_NOT_FOUND);
         }
 
-        $order = Order::where('id', $request->orderId)->first();
-        if (!$order) {
+        $orderExists = Order::where('id', $request->orderId)->exists();
+        if (!$orderExists) {
             return ApiResponse::error(ApiCode::ORDER_NOT_FOUND);
         }
 
         // 只有订单状态和用户信息校验通过，才能确认成功
         if ($request->role === BusinessDef::USER_ROLE_BUYER) {
-            if ($userId == $order->buy_user_id && $order->status == BusinessDef::ORDER_STATUS_WAIT_BUYER) {
-                // 开启事务，确保数据一致性
-                DB::beginTransaction();
 
-                try {
-                    $order->status = BusinessDef::ORDER_STATUS_WAIT_SELLER;
-                    $order->save();
+            // 开启事务，确保数据一致性
+            DB::beginTransaction();
+            try {
+                $order = Order::where('id', $request->orderId)
+                    ->lockForUpdate()
+                    ->first();
 
-                    // 更新买家的财务变动记录
-                    $buyerTransaction = FinancialRecord::
-                        where('transaction_id', $order->buy_transaction_id)
-                        ->first();
-                    
-                    $buyerTransaction->actual_amount = $order->total_price;
-                    $buyerTransaction->save();
+                if (!$order) {
+                    DB::rollBack();
+                    return ApiResponse::error(ApiCode::ORDER_NOT_FOUND);
+                }
 
-                    $sellerTransaction = FinancialRecord::
-                        where('transaction_id', $order->sell_transaction_id)
-                        ->first();
-
-                    // 提交事务
-                    DB::commit();
-
-                    // 分别向买家和卖家推送消息
-                    MessageHelper::pushMessage($order->buy_user_id, [
-                        'transaction_id' => $buyerTransaction->transaction_id,
-                        'transaction_type' => $buyerTransaction->transaction_type,
-                        'reference_id' => $order->id,
-                        'title' => '',
-                        'content' => '',
-                    ]);
-
-                    MessageHelper::pushMessage($order->sell_user_id, [
-                        'transaction_id' => $sellerTransaction->transaction_id,
-                        'transaction_type' => $sellerTransaction->transaction_type,
-                        'reference_id' => $order->id,
-                        'title' => '',
-                        'content' => '',
-                    ]);
-
-                    // 通知卖家交易变动
-                    event(new TransactionUpdated(
-                        $order->sell_user_id,
-                        $sellerTransaction->transaction_id,
-                        $sellerTransaction->transaction_type,
-                        $sellerTransaction->reference_id,
-                    ));
-
-                } catch (\Exception $e) {
-                    \Log::error('[OrderConfirm] error occurred: ' . $e->getMessage());
-                    // 回滚事务
+                // 确认用户与状态
+                if (!($userId == $order->buy_user_id && $order->status == BusinessDef::ORDER_STATUS_WAIT_BUYER)) {
                     DB::rollBack();
                     return ApiResponse::error(ApiCode::ORDER_CONFIRM_FAIL);
                 }
-            } else {
+
+                $order->status = BusinessDef::ORDER_STATUS_WAIT_SELLER;
+                $order->save();
+
+                // 加锁的财务记录
+                $buyerTransaction = FinancialRecord::where('transaction_id', $order->buy_transaction_id)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (!$buyerTransaction) {
+                    DB::rollBack();
+                    return ApiResponse::error(ApiCode::TRANSACTION_NOT_FOUND);
+                }
+
+                $buyerTransaction->actual_amount = $order->total_price;
+                $buyerTransaction->save();
+
+                // 卖家记录读取（读即可，不需要修改，可不加锁）
+                $sellerTransaction = FinancialRecord::where('transaction_id', $order->sell_transaction_id)->first();
+
+                // 提交事务
+                DB::commit();
+
+                // 推送消息（事务外）
+                MessageHelper::pushMessage($order->buy_user_id, [
+                    'transaction_id' => $buyerTransaction->transaction_id,
+                    'transaction_type' => $buyerTransaction->transaction_type,
+                    'reference_id' => $order->id,
+                    'title' => '',
+                    'content' => '',
+                ]);
+
+                MessageHelper::pushMessage($order->sell_user_id, [
+                    'transaction_id' => $sellerTransaction->transaction_id,
+                    'transaction_type' => $sellerTransaction->transaction_type,
+                    'reference_id' => $order->id,
+                    'title' => '',
+                    'content' => '',
+                ]);
+
+                // 通知卖家交易变动
+                event(new TransactionUpdated(
+                    $order->sell_user_id,
+                    $sellerTransaction->transaction_id,
+                    $sellerTransaction->transaction_type,
+                    $sellerTransaction->reference_id,
+                ));
+
+            } catch (\Exception $e) {
+                \Log::error('[OrderConfirm][BUYER] error: ' . $e->getMessage());
+                DB::rollBack();
                 return ApiResponse::error(ApiCode::ORDER_CONFIRM_FAIL);
             }
         } else if ($request->role === BusinessDef::USER_ROLE_SELLER
             || $request->role === BusinessDef::USER_ROLE_AGENT) {
-            // 商家确认收款后，需要处理财务变动
-            if ($userId == $order->sell_user_id && $order->status == BusinessDef::ORDER_STATUS_WAIT_SELLER) {
-
-                $userAccount = UserAccount::where('user_id', $userId)->first();
-                if (!$userAccount) {
-                    return ApiResponse::error(ApiCode::USER_ACCOUNT_NOT_FOUND);
-                }
-
-                // 开启事务，确保数据一致性
-                DB::beginTransaction();
-
-                try {
-                    $order->status = BusinessDef::ORDER_STATUS_COMPLETED;
-                    $order->save();
-
-                    // 更新卖家的总余额（可用余额在挂单时已经冻结，这里不需要处理）
-                    $balanceBefore = $userAccount->total_balance;
-                    $balanceAfter = bcsub($userAccount->total_balance, $order->total_price, 2);
-
-                    $userAccount->total_balance = $balanceAfter;
-                    $userAccount->save();
-
-                    // 更新买家的财务变动记录
-                    $buyerTransaction = FinancialRecord::
-                        where('transaction_id', $order->buy_transaction_id)
-                        ->first();
-                    $buyerTransaction->status = BusinessDef::TRANSACTION_COMPLETED;
-                    $buyerTransaction->save();
-
-                    // 更新卖家的财务变动记录
-                    $sellerTransaction = FinancialRecord::
-                        where('transaction_id', $order->sell_transaction_id)
-                        ->first();
-                    
-                    $sellerTransaction->actual_amount = $order->total_price;
-                    $sellerTransaction->balance_before = $balanceBefore;
-                    $sellerTransaction->balance_after = $balanceAfter;
-                    $sellerTransaction->status = BusinessDef::TRANSACTION_COMPLETED;
-                    $sellerTransaction->save();
-
-                    // 注意，此处如果有挂单是因为下单导致不满足最低库存要求的，需要释放库存并转换到售完状态
-                    $orderListing = OrderListing::where('id', $order->order_listing_id)
+            
+            DB::beginTransaction();
+            try {
+                // 订单读取 + 状态判断在事务内
+                $order = Order::where('id', $request->orderId)
+                    ->lockForUpdate()
                     ->first();
 
-                    if ($orderListing->status == BusinessDef::ORDER_LISTING_STATUS_STOCK_LOCK) {
-                        $userAccount->available_balance = bcadd($userAccount->available_balance, $orderListing->remain_amount, 2);
-                        $userAccount->save();
+                if (!$order) {
+                    DB::rollBack();
+                    return ApiResponse::error(ApiCode::ORDER_NOT_FOUND);
+                }
 
-                        $orderListing->remain_amount = 0;
-                        $orderListing->status = BusinessDef::ORDER_LISTING_STATUS_SELL_OUT;
-                        $orderListing->save();
-                    }
-
-                    // 提交事务
-                    DB::commit();
-
-                    // 分别向买家和卖家推送消息
-                    MessageHelper::pushMessage($order->buy_user_id, [
-                        'transaction_id' => $buyerTransaction->transaction_id,
-                        'transaction_type' => $buyerTransaction->transaction_type,
-                        'reference_id' => $order->id,
-                        'title' => '',
-                        'content' => '',
-                    ]);
-
-                    MessageHelper::pushMessage($order->sell_user_id, [
-                        'transaction_id' => $sellerTransaction->transaction_id,
-                        'transaction_type' => $sellerTransaction->transaction_type,
-                        'reference_id' => $order->id,
-                        'title' => '',
-                        'content' => '',
-                    ]);
-
-                    // 通知买家交易变动
-                    event(new TransactionUpdated(
-                        $order->buy_user_id,
-                        $buyerTransaction->transaction_id,
-                        $buyerTransaction->transaction_type,
-                        $buyerTransaction->reference_id,
-                    ));
-
-                } catch (\Exception $e) {
-                    \Log::error('[OrderConfirm] occurred: ' . $e->getMessage());
-                    // 回滚事务
+                if (!($userId == $order->sell_user_id && $order->status == BusinessDef::ORDER_STATUS_WAIT_SELLER)) {
                     DB::rollBack();
                     return ApiResponse::error(ApiCode::ORDER_CONFIRM_FAIL);
                 }
-            } else {
+
+                $order->status = BusinessDef::ORDER_STATUS_COMPLETED;
+                $order->save();
+
+                // 卖家账户加锁
+                $userAccount = UserAccount::where('user_id', $userId)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (!$userAccount) {
+                    DB::rollBack();
+                    return ApiResponse::error(ApiCode::USER_ACCOUNT_NOT_FOUND);
+                }
+
+                // 扣除总余额
+                $balanceBefore = $userAccount->total_balance;
+                $balanceAfter = bcsub($userAccount->total_balance, $order->total_price, 2);
+                $userAccount->total_balance = $balanceAfter;
+                $userAccount->save();
+
+                // 加锁买家交易记录
+                $buyerTransaction = FinancialRecord::where('transaction_id', $order->buy_transaction_id)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (!$buyerTransaction) {
+                    DB::rollBack();
+                    return ApiResponse::error(ApiCode::TRANSACTION_NOT_FOUND);
+                }
+
+                $buyerTransaction->status = BusinessDef::TRANSACTION_COMPLETED;
+                $buyerTransaction->save();
+
+                // 加锁卖家交易记录
+                $sellerTransaction = FinancialRecord::where('transaction_id', $order->sell_transaction_id)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (!$sellerTransaction) {
+                    DB::rollBack();
+                    return ApiResponse::error(ApiCode::TRANSACTION_NOT_FOUND);
+                }
+
+                $sellerTransaction->actual_amount = $order->total_price;
+                $sellerTransaction->balance_before = $balanceBefore;
+                $sellerTransaction->balance_after = $balanceAfter;
+                $sellerTransaction->status = BusinessDef::TRANSACTION_COMPLETED;
+                $sellerTransaction->save();
+
+                // 挂单逻辑
+                $orderListing = OrderListing::where('id', $order->order_listing_id)
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($orderListing->status == BusinessDef::ORDER_LISTING_STATUS_STOCK_LOCK) {
+                    $userAccount->available_balance = bcadd($userAccount->available_balance, $orderListing->remain_amount, 2);
+                    $userAccount->save();
+
+                    $orderListing->remain_amount = 0;
+                    $orderListing->status = BusinessDef::ORDER_LISTING_STATUS_SELL_OUT;
+                    $orderListing->save();
+                }
+
+                DB::commit();
+
+                // 推送消息（事务外）
+                MessageHelper::pushMessage($order->buy_user_id, [
+                    'transaction_id' => $buyerTransaction->transaction_id,
+                    'transaction_type' => $buyerTransaction->transaction_type,
+                    'reference_id' => $order->id,
+                    'title' => '',
+                    'content' => '',
+                ]);
+
+                MessageHelper::pushMessage($order->sell_user_id, [
+                    'transaction_id' => $sellerTransaction->transaction_id,
+                    'transaction_type' => $sellerTransaction->transaction_type,
+                    'reference_id' => $order->id,
+                    'title' => '',
+                    'content' => '',
+                ]);
+
+                // 通知买家变动
+                event(new TransactionUpdated(
+                    $order->buy_user_id,
+                    $buyerTransaction->transaction_id,
+                    $buyerTransaction->transaction_type,
+                    $buyerTransaction->reference_id,
+                ));
+
+            } catch (\Exception $e) {
+                \Log::error('[OrderConfirm][SELLER] error: ' . $e->getMessage());
+                DB::rollBack();
                 return ApiResponse::error(ApiCode::ORDER_CONFIRM_FAIL);
             }
         }
@@ -869,34 +927,45 @@ class OrderController extends Controller
             return ApiResponse::error(ApiCode::ORDER_NOT_FOUND);
         }
 
-        // 只有订单状态和用户信息校验通过，才能确认成功
         if ($userId == $order->buy_user_id && $order->status == BusinessDef::ORDER_STATUS_WAIT_BUYER) {
-            // 开启事务，确保数据一致性
+
             DB::beginTransaction();
 
             try {
+                // 加悲观锁，防止并发修改
+                $order = Order::where('id', $request->order_id)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (!$order) {
+                    DB::rollBack();
+                    return ApiResponse::error(ApiCode::ORDER_NOT_FOUND);
+                }
+
+                // 修改订单信息
                 $order->status = BusinessDef::ORDER_STATUS_WAIT_SELLER;
                 $order->buy_account_name = $request->account_name;
                 $order->buy_account_number = $request->account_number;
                 $order->buy_bank_name = $request->bank_name ?? '';
                 $order->save();
 
-                // 更新买家的财务变动记录
-                $buyerTransaction = FinancialRecord::
-                    where('transaction_id', $order->buy_transaction_id)
-                    ->first();
-                
+                // 读取财务记录，确保锁期间数据一致（无需 lockForUpdate）
+                $buyerTransaction = FinancialRecord::where('transaction_id', $order->buy_transaction_id)->first();
+                $sellerTransaction = FinancialRecord::where('transaction_id', $order->sell_transaction_id)->first();
+
+                if (!$buyerTransaction || !$sellerTransaction) {
+                    DB::rollBack();
+                    return ApiResponse::error(ApiCode::TRANSACTION_NOT_FOUND);
+                }
+
+                // 更新买家财务记录
                 $buyerTransaction->actual_amount = $order->total_price;
                 $buyerTransaction->save();
-
-                $sellerTransaction = FinancialRecord::
-                    where('transaction_id', $order->sell_transaction_id)
-                    ->first();
 
                 // 提交事务
                 DB::commit();
 
-                // 分别向买家和卖家推送消息
+                // 推送消息（事务外执行）
                 MessageHelper::pushMessage($order->buy_user_id, [
                     'transaction_id' => $buyerTransaction->transaction_id,
                     'transaction_type' => $buyerTransaction->transaction_type,
@@ -922,8 +991,7 @@ class OrderController extends Controller
                 ));
 
             } catch (\Exception $e) {
-                \Log::error('An error occurred: ' . $e->getMessage());
-                // 回滚事务
+                \Log::error('[AutoBuyerConfirm] error occurred: ' . $e->getMessage());
                 DB::rollBack();
                 return ApiResponse::error(ApiCode::ORDER_CONFIRM_FAIL);
             }
