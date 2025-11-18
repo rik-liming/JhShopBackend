@@ -121,6 +121,8 @@ Route::middleware(['check.admin.token'])->group(function () {
     Route::put('/admin/other', [AdminController::class, 'updateOtherAdmin']);
     Route::post('/admin/secret/regen', [AdminController::class, 'regenSecret']);
     Route::get('/admin/page', [AdminController::class, 'getAdminByPage']);
+    Route::get('/admin/password', [AdminController::class, 'getPasswordInfo']);
+    Route::put('/admin/password', [AdminController::class, 'updatePasswordInfo']);
 
     Route::get('/admin/report/list', [AdminReportController::class, 'getReportByTime']);
     Route::post('/admin/report/daily', [AdminReportController::class, 'generateTodayReport']);

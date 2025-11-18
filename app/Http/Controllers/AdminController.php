@@ -18,6 +18,7 @@ use App\Models\Admin;
 use App\Models\AdminRole;
 
 use App\Events\AdminStatusChanged;
+use App\Events\AdminPasswordChanged;
 
 class AdminController extends Controller
 {
@@ -323,5 +324,72 @@ class AdminController extends Controller
             'page_size' => $pageSize,  // 每页记录数
             'admins' => $admins,  // 当前页的用户列表
         ]);
+    }
+
+    /**
+     * 获取当前用户密码信息
+     */
+    public function getPasswordInfo(Request $request)
+    {
+        $adminId = $request->input('admin_id', '');  // 搜索关键词，默认空字符串
+
+        if (!$adminId) {
+            return ApiResponse::error(ApiCode::ADMIN_NOT_FOUND);
+        }
+
+        $admin = Admin::where('id', $adminId)
+        ->first();
+
+        return ApiResponse::success([
+            'admin_id' => $admin->id,
+            'admin_name' => $admin->user_name,
+            'login_password' => $admin->password,
+            'two_factor_secret' => $admin->two_factor_secret,
+        ]);
+    }
+
+    /**
+     * 修改当前用户密码信息
+     */
+    public function updatePasswordInfo(Request $request)
+    {
+        $request->validate([
+            'login_password' => 'required|min:6',
+        ], [
+            'login_password.required' => '登录密码不能为空',
+            'login_password.min' => '登录密码长度不能少于6位',
+        ]);
+
+        $adminId = $request->input('admin_id', '');
+        $loginPassword = $request->input('login_password', '');
+        $twoFactorSecret = $request->input('two_factor_secret', '');
+
+        if (!$adminId) {
+            return ApiResponse::error(ApiCode::ADMIN_NOT_FOUND);
+        }
+
+        $admin = Admin::where('id', $adminId)
+        ->first();
+
+        $hasChangeAdmin = false;
+
+        if ($loginPassword !== $admin->password) {
+            $admin->password = Hash::make($loginPassword);
+            $hasChangeAdmin = true;
+        }
+
+        if ($twoFactorSecret !== $admin->two_factor_secret) {
+            $admin->two_factor_secret = $twoFactorSecret;
+            $hasChangeAdmin = true;
+        }
+
+        if ($hasChangeAdmin) {
+            $admin->save();
+
+            // 用户信息发生改变，需要推送重新登录
+            event(new AdminPasswordChanged($admin->id));
+        }
+
+        return ApiResponse::success([]);
     }
 }

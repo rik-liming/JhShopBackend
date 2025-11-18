@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- 主机： localhost
--- 生成日期： 2025-11-02 07:36:23
+-- 生成日期： 2025-11-18 11:30:36
 -- 服务器版本： 5.7.44-log
 -- PHP 版本： 8.0.26
 
@@ -49,8 +49,7 @@ CREATE TABLE `jh_admin` (
 --
 
 INSERT INTO `jh_admin` (`id`, `role`, `user_name`, `real_name`, `password`, `email`, `phone`, `avatar`, `last_login_ip`, `last_login_time`, `created_at`, `updated_at`, `status`, `two_factor_secret`) VALUES
-(1, 'admin', 'admin', '管理员', '$2y$10$7N/zQ0VifAsI9ruJsRe9P.AZYZizUDddAwBv9cNGw7w0ABiyMXEDC', 'admin@jh.com', '13800000001', '/avatars/admin.png', '', NULL, '2025-10-14 20:41:55', '2025-10-14 20:41:55', 1, ''),
-(2, 'superAdmin', 'superAdmin', '超级管理员', '$2y$10$7N/zQ0VifAsI9ruJsRe9P.AZYZizUDddAwBv9cNGw7w0ABiyMXEDC', 'superadmin@jh.com', '13800000002', '/avatars/superadmin.png', '', NULL, '2025-10-14 20:41:55', '2025-10-14 20:41:55', 1, '');
+(1, 'superAdmin', 'superAdmin', '超级管理员', '$2y$10$7N/zQ0VifAsI9ruJsRe9P.AZYZizUDddAwBv9cNGw7w0ABiyMXEDC', 'superadmin@jh.com', '13800000002', '/avatars/superadmin.png', '8.219.234.249', '2025-11-18 10:54:19', '2025-10-14 20:41:55', '2025-11-18 10:54:19', 1, 'GMAPZXJRX6LZDUDO');
 
 -- --------------------------------------------------------
 
@@ -76,8 +75,61 @@ CREATE TABLE `jh_admin_privilege_rule` (
 --
 
 INSERT INTO `jh_admin_privilege_rule` (`id`, `pid`, `router_key`, `type`, `name`, `remark`, `created_at`, `updated_at`, `sort_order`, `status`) VALUES
-(1, 0, 'index', 'menu', 'index', '系统首页', '2025-10-14 20:39:33', '2025-10-14 20:39:33', 1, 1),
-(2, 0, 'dashboard', 'menu', 'dashboard', '仪表盘', '2025-10-14 20:39:33', '2025-10-14 20:39:33', 2, 1);
+(1, 0, '/setting', 'menu', '常规管理', '常规管理', '2025-11-18 11:05:57', '2025-11-18 11:05:57', 1, 1),
+(2, 1, '/setting/system', 'menu', '系统配置', '系统配置', '2025-11-18 11:05:57', '2025-11-18 11:05:57', 2, 1),
+(3, 2, '/setting/system:scan', 'action', '查看', '查看', '2025-11-18 11:05:57', '2025-11-18 11:05:57', 3, 1),
+(4, 2, '/setting/system:modify', 'action', '修改', '修改', '2025-11-18 11:05:57', '2025-11-18 11:05:57', 4, 1),
+(5, 1, '/setting/person', 'menu', '个人资料', '个人资料', '2025-11-18 11:05:57', '2025-11-18 11:05:57', 5, 1),
+(6, 5, '/setting/person:scan', 'action', '查看', '查看', '2025-11-18 11:05:57', '2025-11-18 11:05:57', 6, 1),
+(7, 5, '/setting/person:modify', 'action', '修改', '修改', '2025-11-18 11:05:57', '2025-11-18 11:05:57', 7, 1),
+(8, 0, '/permission', 'menu', '权限管理', '权限管理', '2025-11-18 11:05:57', '2025-11-18 11:05:57', 8, 1),
+(9, 8, '/permission/role', 'menu', '角色管理', '角色管理', '2025-11-18 11:05:57', '2025-11-18 11:05:57', 9, 1),
+(10, 9, '/permission/role:scan', 'action', '查看', '查看', '2025-11-18 11:05:57', '2025-11-18 11:05:57', 10, 1),
+(11, 9, '/permission/role:add', 'action', '添加', '添加', '2025-11-18 11:05:57', '2025-11-18 11:05:57', 11, 1),
+(12, 9, '/permission/role:privilegeManage', 'action', '权限管理', '权限管理', '2025-11-18 11:05:57', '2025-11-18 11:05:57', 12, 1),
+(13, 9, '/permission/role:ban', 'action', '启用/封禁', '启用/封禁', '2025-11-18 11:05:57', '2025-11-18 11:05:57', 13, 1),
+(14, 8, '/permission/admin', 'menu', '管理员管理', '管理员管理', '2025-11-18 11:05:57', '2025-11-18 11:05:57', 14, 1),
+(15, 14, '/permission/admin:scan', 'action', '查看', '查看', '2025-11-18 11:05:57', '2025-11-18 11:05:57', 15, 1),
+(16, 14, '/permission/admin:add', 'action', '添加', '添加', '2025-11-18 11:05:57', '2025-11-18 11:05:57', 16, 1),
+(17, 14, '/permission/admin:ban', 'action', '启用/封禁', '启用/封禁', '2025-11-18 11:05:57', '2025-11-18 11:05:57', 17, 1),
+(18, 14, '/permission/admin:modifyPassword', 'action', '修改密码', '修改密码', '2025-11-18 11:05:57', '2025-11-18 11:05:57', 18, 1),
+(19, 0, '/user', 'menu', '会员管理', '会员管理', '2025-11-18 11:05:57', '2025-11-18 11:05:57', 19, 1),
+(20, 19, '/user/index', 'menu', '会员管理', '会员管理', '2025-11-18 11:05:57', '2025-11-18 11:05:57', 20, 1),
+(21, 20, '/user/index:scan', 'action', '查看', '查看', '2025-11-18 11:05:57', '2025-11-18 11:05:57', 21, 1),
+(22, 20, '/user/index:grantNormalRole', 'action', '分配普通角色（买家/商户）', '分配普通角色（买家/商户）', '2025-11-18 11:05:57', '2025-11-18 11:05:57', 22, 1),
+(23, 20, '/user/index:grantSpecialRole', 'action', '分配特别角色（代理/自动化买家）', '分配特别角色（代理/自动化买家）', '2025-11-18 11:05:57', '2025-11-18 11:05:57', 23, 1),
+(24, 20, '/user/index:scanInviterRelation', 'action', '查看下级', '查看下级', '2025-11-18 11:05:57', '2025-11-18 11:05:57', 24, 1),
+(25, 20, '/user/index:scanAccount', 'action', '查看资产', '查看资产', '2025-11-18 11:05:57', '2025-11-18 11:05:57', 25, 1),
+(26, 20, '/user/index:modifyAccount', 'menu', '修改资产', '修改资产', '2025-11-18 11:05:57', '2025-11-18 11:05:57', 26, 1),
+(27, 20, '/user/index:modifyPassword', 'menu', '修改密码', '修改密码', '2025-11-18 11:05:57', '2025-11-18 11:05:57', 27, 1),
+(28, 20, '/user/index:ban', 'action', '启用/封禁', '启用/封禁', '2025-11-18 11:05:57', '2025-11-18 11:05:57', 28, 1),
+(29, 0, '/transaction', 'menu', '财务管理', '财务管理', '2025-11-18 11:05:57', '2025-11-18 11:05:57', 29, 1),
+(30, 29, '/transaction/recharge', 'menu', '充值管理', '充值管理', '2025-11-18 11:05:57', '2025-11-18 11:05:57', 30, 1),
+(31, 30, '/transaction/recharge:scan', 'action', '查看', '查看', '2025-11-18 11:05:57', '2025-11-18 11:05:57', 31, 1),
+(32, 30, '/transaction/recharge:approve', 'action', '审批（通过/驳回）', '审批（通过/驳回）', '2025-11-18 11:05:57', '2025-11-18 11:05:57', 32, 1),
+(33, 29, '/transaction/transfer', 'menu', '转账管理', '转账管理', '2025-11-18 11:05:57', '2025-11-18 11:05:57', 33, 1),
+(34, 33, '/transaction/transfer:scan', 'action', '查看', '查看', '2025-11-18 11:05:57', '2025-11-18 11:05:57', 34, 1),
+(35, 33, '/transaction/transfer:approve', 'action', '审批（通过/驳回）', '审批（通过/驳回）', '2025-11-18 11:05:57', '2025-11-18 11:05:57', 35, 1),
+(36, 29, '/transaction/withdraw', 'menu', '提现管理', '提现管理', '2025-11-18 11:05:57', '2025-11-18 11:05:57', 36, 1),
+(37, 36, '/transaction/withdraw:scan', 'action', '查看', '查看', '2025-11-18 11:05:57', '2025-11-18 11:05:57', 37, 1),
+(38, 36, '/transaction/withdraw:approve', 'action', '审批（通过/驳回）', '审批（通过/驳回）', '2025-11-18 11:05:57', '2025-11-18 11:05:57', 38, 1),
+(39, 0, '/order', 'menu', '订单管理', '订单管理', '2025-11-18 11:05:57', '2025-11-18 11:05:57', 39, 1),
+(40, 39, '/order/listing', 'menu', '挂单管理', '挂单管理', '2025-11-18 11:05:57', '2025-11-18 11:05:57', 40, 1),
+(41, 40, '/order/listing:scan', 'action', '查看', '查看', '2025-11-18 11:05:57', '2025-11-18 11:05:57', 41, 1),
+(42, 40, '/order/listing:approve', 'action', '审批（上架/下架/禁售）', '审批（上架/下架/禁售）', '2025-11-18 11:05:57', '2025-11-18 11:05:57', 42, 1),
+(43, 39, '/order/normal', 'menu', '常规订单', '常规订单', '2025-11-18 11:05:57', '2025-11-18 11:05:57', 43, 1),
+(44, 43, '/order/normal:scan', 'action', '查看', '查看', '2025-11-18 11:05:57', '2025-11-18 11:05:57', 44, 1),
+(45, 43, '/order/normal:approve', 'action', '审批（争议处理）', '审批（争议处理）', '2025-11-18 11:05:57', '2025-11-18 11:05:57', 45, 1),
+(46, 39, '/order/auto', 'menu', '自动化订单', '自动化订单', '2025-11-18 11:05:57', '2025-11-18 11:05:57', 46, 1),
+(47, 46, '/order/auto:scan', 'action', '查看', '查看', '2025-11-18 11:05:57', '2025-11-18 11:05:57', 47, 1),
+(48, 46, '/order/auto:approve', 'action', '审批（争议处理）', '审批（争议处理）', '2025-11-18 11:05:57', '2025-11-18 11:05:57', 48, 1),
+(49, 0, '/report', 'menu', '报表管理', '报表管理', '2025-11-18 11:05:57', '2025-11-18 11:05:57', 49, 1),
+(50, 49, '/report/agent', 'menu', '代理', '代理', '2025-11-18 11:05:57', '2025-11-18 11:05:57', 50, 1),
+(51, 50, '/report/agent:scan', 'action', '查看', '查看', '2025-11-18 11:05:57', '2025-11-18 11:05:57', 51, 1),
+(52, 49, '/report/auto_buyer', 'menu', '自动化买家', '自动化买家', '2025-11-18 11:05:57', '2025-11-18 11:05:57', 52, 1),
+(53, 52, '/report/auto_buyer:scan', 'action', '查看', '查看', '2025-11-18 11:05:57', '2025-11-18 11:05:57', 53, 1),
+(54, 49, '/report/buyer', 'menu', '系统买家', '系统买家', '2025-11-18 11:05:57', '2025-11-18 11:05:57', 54, 1),
+(55, 54, '/report/buyer:select', 'action', '查看', '查看', '2025-11-18 11:05:57', '2025-11-18 11:05:57', 55, 1);
 
 -- --------------------------------------------------------
 
@@ -88,7 +140,7 @@ INSERT INTO `jh_admin_privilege_rule` (`id`, `pid`, `router_key`, `type`, `name`
 CREATE TABLE `jh_admin_role` (
   `role` varchar(50) NOT NULL COMMENT '角色唯一标识',
   `name` varchar(50) NOT NULL COMMENT '角色名',
-  `remark` varchar(255) DEFAULT NULL COMMENT '备注',
+  `remark` varchar(50) NOT NULL COMMENT '备注',
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   `status` tinyint(1) NOT NULL DEFAULT '1' COMMENT '状态：0禁用，1启用'
@@ -99,8 +151,7 @@ CREATE TABLE `jh_admin_role` (
 --
 
 INSERT INTO `jh_admin_role` (`role`, `name`, `remark`, `created_at`, `updated_at`, `status`) VALUES
-('admin', '管理员', '管理员拥有部分权限', '2025-10-14 20:38:50', '2025-10-14 20:38:50', 1),
-('superAdmin', '超级管理员', '超级管理员拥有全部权限', '2025-10-14 20:38:50', '2025-10-14 20:38:50', 1);
+('superAdmin', '超级管理员', '超级管理员', '2025-10-14 20:38:50', '2025-10-14 20:38:50', 1);
 
 -- --------------------------------------------------------
 
@@ -112,16 +163,6 @@ CREATE TABLE `jh_admin_role_rule` (
   `role` varchar(50) NOT NULL,
   `rule_id` int(10) UNSIGNED NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='角色与规则关联表';
-
---
--- 转存表中的数据 `jh_admin_role_rule`
---
-
-INSERT INTO `jh_admin_role_rule` (`role`, `rule_id`) VALUES
-('admin', 1),
-('superAdmin', 1),
-('admin', 2),
-('superAdmin', 2);
 
 -- --------------------------------------------------------
 
@@ -151,8 +192,8 @@ CREATE TABLE `jh_platform_config` (
 -- 转存表中的数据 `jh_platform_config`
 --
 
-INSERT INTO `jh_platform_config` (`id`, `payment_address`, `payment_qr_code`, `transfer_fee`, `withdrawl_fee`, `exchange_rate_platform`, `exchange_rate_alipay`, `exchange_rate_wechat`, `exchange_rate_bank`, `advertisement_text`, `remote_order_config`, `created_at`, `updated_at`) VALUES
-(1, 'jjusfafxsdfsjeexxseeed', '', '2.00', '2.00', '7.25', '7.24', '7.25', '7.26', 'Welcome to our platform!', '{\"openMarkets\": [\"alipay\", \"wechat\", \"bank\"], \"amountOptions\": [500, 1000, 2000]}', '2025-10-14 20:51:37', '2025-10-14 20:51:37');
+INSERT INTO `jh_platform_config` (`id`, `payment_address`, `payment_qr_code`, `transfer_fee`, `withdrawl_fee`, `agent_commission_rate`, `buyer_commission_rate`, `exchange_rate_platform`, `exchange_rate_alipay`, `exchange_rate_wechat`, `exchange_rate_bank`, `advertisement_text`, `remote_order_config`, `created_at`, `updated_at`) VALUES
+(1, 'jjusfafxsdfsjeexxseeed', NULL, '2.00', '2.00', '10.00', '20.00', '7.20', '7.30', '7.40', '7.50', 'Welcome to our platform!', '{\"openMarkets\": [\"alipay\", \"wechat\", \"bank\"], \"amountOptions\": [500, 1000, 2000]}', '2025-10-14 20:51:37', '2025-11-16 14:34:09');
 
 -- --------------------------------------------------------
 
@@ -192,7 +233,7 @@ INSERT INTO `jh_user` (`id`, `inviter_id`, `inviter_name`, `root_agent_id`, `roo
 (3, 2, 'agent1', 2, 'agent1', 'seller', 'seller1', '卖家1', '$2y$10$7N/zQ0VifAsI9ruJsRe9P.AZYZizUDddAwBv9cNGw7w0ABiyMXEDC', 'seller1@jh.com', '13800000003', '/avatars/seller.png', '192.168.0.11', '2025-10-14 20:46:59', NULL, '2025-10-14 20:46:59', '2025-10-14 20:46:59', 1, ''),
 (4, 3, 'seller1', 2, 'agent1', 'seller', 'seller2', '卖家2', '$2y$10$7N/zQ0VifAsI9ruJsRe9P.AZYZizUDddAwBv9cNGw7w0ABiyMXEDC', 'seller2@jh.com', '13800000004', '/avatars/seller.png', '192.168.0.11', '2025-10-14 20:46:59', NULL, '2025-10-14 20:46:59', '2025-10-14 20:46:59', 1, ''),
 (5, 3, 'seller1', 0, '', 'buyer', 'buyer1', '买家1', '$2y$10$7N/zQ0VifAsI9ruJsRe9P.AZYZizUDddAwBv9cNGw7w0ABiyMXEDC', 'buyer1@jh.com', '13800000005', '/avatars/buyer.png', '10.0.0.1', '2025-10-14 20:46:59', NULL, '2025-10-14 20:46:59', '2025-10-14 20:46:59', 1, ''),
-(6, 0, '', 0, '', 'autoBuyer', 'autoBuyer1', '自动化买家1', '$2y$10$7N/zQ0VifAsI9ruJsRe9P.AZYZizUDddAwBv9cNGw7w0ABiyMXEDC', 'autobuyer@jh.com', '13800000006', '/avatars/buyer.png', '10.0.0.1', '2025-10-14 20:46:59', NULL, '2025-10-14 20:46:59', '2025-10-14 20:46:59', 1, '');
+(6, 0, '', 0, '', 'autoBuyer', 'autoBuyer1', '自动化买家1', '$2y$10$7N/zQ0VifAsI9ruJsRe9P.AZYZizUDddAwBv9cNGw7w0ABiyMXEDC', 'autobuyer@jh.com', '13800000006', '/avatars/buyer.png', '8.219.234.249', '2025-11-05 09:23:15', NULL, '2025-10-14 20:46:59', '2025-11-05 09:23:15', 1, 'SVRZGYU77LAPM7ED');
 
 -- --------------------------------------------------------
 
@@ -214,13 +255,13 @@ CREATE TABLE `jh_user_account` (
 -- 转存表中的数据 `jh_user_account`
 --
 
-INSERT INTO `jh_user_account` (`id`, `user_id`, `total_balance`, `available_balance`, `payment_password`) VALUES
-(1, 1, 0.00, 0.00, '$2y$10$7N/zQ0VifAsI9ruJsRe9P.AZYZizUDddAwBv9cNGw7w0ABiyMXEDC'),
-(2, 2, 0.00, 0.00, '$2y$10$7N/zQ0VifAsI9ruJsRe9P.AZYZizUDddAwBv9cNGw7w0ABiyMXEDC'),
-(3, 3, 0.00, 0.00, '$2y$10$7N/zQ0VifAsI9ruJsRe9P.AZYZizUDddAwBv9cNGw7w0ABiyMXEDC'),
-(4, 4, 0.00, 0.00, '$2y$10$7N/zQ0VifAsI9ruJsRe9P.AZYZizUDddAwBv9cNGw7w0ABiyMXEDC'),
-(5, 5, 0.00, 0.00, '$2y$10$7N/zQ0VifAsI9ruJsRe9P.AZYZizUDddAwBv9cNGw7w0ABiyMXEDC'),
-(6, 6, 0.00, 0.00, '$2y$10$7N/zQ0VifAsI9ruJsRe9P.AZYZizUDddAwBv9cNGw7w0ABiyMXEDC');
+INSERT INTO `jh_user_account` (`id`, `user_id`, `total_balance`, `available_balance`, `payment_password`, `created_at`, `updated_at`) VALUES
+(1, 1, '0.00', '0.00', '', '2025-11-02 00:55:38', '2025-11-18 10:45:14'),
+(2, 2, '0.00', '0.00', '', '2025-11-02 01:00:36', '2025-11-18 10:45:34'),
+(3, 3, '0.00', '0.00', '', '2025-11-02 01:05:41', '2025-11-18 10:45:59'),
+(4, 4, '0.00', '0.00', '', '2025-11-02 20:12:01', '2025-11-18 10:46:11'),
+(5, 5, '0.00', '0.00', '', '2025-11-04 07:17:12', '2025-11-18 10:46:37'),
+(6, 6, '0.00', '0.00', '', '2025-11-04 07:22:46', '2025-11-18 10:46:42');
 
 -- --------------------------------------------------------
 
@@ -232,12 +273,12 @@ CREATE TABLE `jh_user_daily_report` (
   `id` bigint(20) UNSIGNED NOT NULL,
   `report_date` date NOT NULL COMMENT '统计日期',
   `user_id` bigint(20) UNSIGNED NOT NULL COMMENT '用户ID',
-  `user_email` varchar(100) DEFAULT '' COMMENT '用户电子邮箱',
+  `user_email` varchar(100) NOT NULL DEFAULT '' COMMENT '用户电子邮箱',
   `type` enum('buyer','autoBuyer','agent') NOT NULL COMMENT '报表类型: buyer=买家, autoBuyer=自动化买家, agent=代理',
   `order_count` int(10) UNSIGNED NOT NULL DEFAULT '0' COMMENT '订单数量',
   `total_amount` decimal(18,2) NOT NULL DEFAULT '0.00' COMMENT '订单总额',
-  `commission_rate` decimal(18,2) UNSIGNED NOT NULL DEFAULT '0.00' COMMENT '佣金比例',
-  `commission_amount` decimal(18,2) NOT NULL DEFAULT '0.00' COMMENT '佣金数额',
+  `commission_rate` decimal(5,2) NOT NULL DEFAULT '0.00' COMMENT '佣金比例',
+  `commission_amount` decimal(5,2) DEFAULT '0.00' COMMENT '佣金数额',
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户日报表';
@@ -262,7 +303,7 @@ CREATE TABLE `jh_user_financial_record` (
   `transaction_type` enum('recharge','transfer_send','transfer_receive','withdraw','order_buy','order_auto_buy','order_sell','order_auto_sell') NOT NULL COMMENT '变动类型：recharge（充值）、transfer_send（转账-转出）、transfer_receive（转账-转入）、withdraw（提现）、order（订单）',
   `reference_id` int(10) UNSIGNED DEFAULT NULL COMMENT '关联ID，比如转账的记录ID，订单ID',
   `display_reference_id` varchar(255) NOT NULL COMMENT '关联的展示ID, 用于展示的充值单号（比如202501010001）',
-  `status` tinyint(1) NOT NULL DEFAULT '0' COMMENT '状态：-1 删除；0 进行中；1 已完结',
+  `status` tinyint(1) NOT NULL DEFAULT '0' COMMENT '状态：-1 删除；0 默认；1 进行中；2 已完结',
   `description` text COMMENT '变动描述（可选）',
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '变动时间',
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '状态更新时间'
@@ -315,7 +356,7 @@ CREATE TABLE `jh_user_order_listing` (
   `remain_amount` decimal(15,2) NOT NULL COMMENT '剩余数量',
   `min_sale_amount` decimal(15,2) UNSIGNED NOT NULL COMMENT '最低售卖数量，低于此数量下架挂单',
   `payment_method` enum('bank','alipay','wechat') DEFAULT NULL COMMENT '支付方式',
-  `status` tinyint(1) NOT NULL DEFAULT '1' COMMENT '挂单状态：0 已下架，1 在售 2 禁售 3 锁库存冻结 4 售完 5 已撤单',
+  `status` tinyint(1) NOT NULL DEFAULT '1' COMMENT '挂单状态：0 已下架，1 在售',
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户挂单表';
@@ -645,13 +686,13 @@ ALTER TABLE `jh_user_withdrawal`
 -- 使用表AUTO_INCREMENT `jh_admin`
 --
 ALTER TABLE `jh_admin`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'ID', AUTO_INCREMENT=3;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'ID', AUTO_INCREMENT=2;
 
 --
 -- 使用表AUTO_INCREMENT `jh_admin_privilege_rule`
 --
 ALTER TABLE `jh_admin_privilege_rule`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=56;
 
 --
 -- 使用表AUTO_INCREMENT `jh_platform_config`
@@ -669,7 +710,7 @@ ALTER TABLE `jh_user`
 -- 使用表AUTO_INCREMENT `jh_user_account`
 --
 ALTER TABLE `jh_user_account`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '账户ID';
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '账户ID', AUTO_INCREMENT=7;
 
 --
 -- 使用表AUTO_INCREMENT `jh_user_daily_report`
