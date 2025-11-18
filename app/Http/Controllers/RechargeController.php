@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Redis;
 use App\Helpers\AdminMessageHelper;
 use App\Enums\BusinessDef;
 use App\Events\AdminBusinessUpdated;
+use App\Events\AdminReddotUpdated;
 
 class RechargeController extends Controller
 {
@@ -142,6 +143,7 @@ class RechargeController extends Controller
         ]);
 
         event(new AdminBusinessUpdated());
+        event(new AdminReddotUpdated());
 
         return ApiResponse::success([
             'recharge' => $recharge,

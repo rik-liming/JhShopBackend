@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Hash;
 use App\Helpers\AdminMessageHelper;
 use App\Enums\BusinessDef;
 use App\Events\AdminBusinessUpdated;
+use App\Events\AdminReddotUpdated;
 
 class WithdrawController extends Controller
 {
@@ -131,6 +132,7 @@ class WithdrawController extends Controller
             ]);
 
             event(new AdminBusinessUpdated());
+            event(new AdminReddotUpdated());
 
             return ApiResponse::success(['withdraw' => $withdraw]);
 

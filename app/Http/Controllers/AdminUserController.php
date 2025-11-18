@@ -22,6 +22,7 @@ use App\Models\UserAccount;
 use App\Events\UserPasswordChanged;
 use App\Events\UserRoleChanged;
 use App\Events\UserStatusChanged;
+use App\Events\AdminReddotUpdated;
 
 class AdminUserController extends Controller
 {
@@ -163,6 +164,7 @@ class AdminUserController extends Controller
         // 处理状态变更，发推送
         if ($hasRoleChanged) {
             event(new UserRoleChanged($user->id, $user->role));
+            event(new AdminReddotUpdated());
         }
 
         if ($hasStatusChanged && $status == BusinessDef::USER_STATUS_INACTIVE) {
@@ -401,6 +403,7 @@ class AdminUserController extends Controller
         // 处理状态变更，发推送
         if ($hasRoleChanged) {
             event(new UserRoleChanged($user->id, $user->role));
+            event(new AdminReddotUpdated());
         }
 
         // 保存更新

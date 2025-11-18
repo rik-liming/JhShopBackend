@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Hash;
 use App\Helpers\AdminMessageHelper;
 use App\Enums\BusinessDef;
 use App\Events\AdminBusinessUpdated;
+use App\Events\AdminReddotUpdated;
 
 class TransferController extends Controller
 {
@@ -147,6 +148,7 @@ class TransferController extends Controller
             ]);
 
             event(new AdminBusinessUpdated());
+            event(new AdminReddotUpdated());
 
             return ApiResponse::success(['transfer' => $transfer]);
 

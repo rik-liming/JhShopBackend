@@ -21,6 +21,7 @@ use App\Models\UserAccount;
 use App\Models\FinancialRecord;
 
 use App\Events\TransactionUpdated;
+use App\Events\AdminReddotUpdated;
 use App\Helpers\MessageHelper;
 
 class AdminTransferController extends Controller
@@ -209,6 +210,9 @@ class AdminTransferController extends Controller
                 $finance->reference_id,
             ));
         }
+
+        // 通知红点变更
+        event(new AdminReddotUpdated());
 
         return ApiResponse::success([
             'transfer' => $transfer

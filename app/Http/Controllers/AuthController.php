@@ -17,6 +17,7 @@ use App\Enums\ApiCode;
 use App\Helpers\AdminMessageHelper;
 use App\Enums\BusinessDef;
 use App\Events\AdminBusinessUpdated;
+use App\Events\AdminReddotUpdated;
 
 class AuthController extends Controller
 {
@@ -82,6 +83,7 @@ class AuthController extends Controller
 
         // 通知管理员业务变动
         event(new AdminBusinessUpdated());
+        event(new AdminReddotUpdated());
 
         return ApiResponse::success([
             'user' => $newUser

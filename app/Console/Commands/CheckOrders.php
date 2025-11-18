@@ -9,9 +9,10 @@ use Illuminate\Support\Facades\Log;
 use App\Enums\BusinessDef;
 use Illuminate\Support\Facades\DB;
 use App\Helpers\AdminMessageHelper;
-use App\Events\AdminBusinessUpdated;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Redis;
+use App\Events\AdminBusinessUpdated;
+use App\Events\AdminReddotUpdated;
 
 class CheckOrders extends Command
 {
@@ -190,6 +191,7 @@ class CheckOrders extends Command
 
         // 通知管理员业务变动
         event(new AdminBusinessUpdated());
+        event(new AdminReddotUpdated());
 
         return ['success' => true, 'date' => now()];
     }

@@ -21,6 +21,7 @@ use App\Models\UserAccount;
 use App\Models\FinancialRecord;
 
 use App\Events\TransactionUpdated;
+use App\Events\AdminReddotUpdated;
 use App\Helpers\MessageHelper;
 
 class AdminWithdrawController extends Controller
@@ -168,6 +169,9 @@ class AdminWithdrawController extends Controller
             $financeRecord->transaction_type,
             $financeRecord->reference_id,
         ));
+
+        // 通知红点变更
+        event(new AdminReddotUpdated());
 
         return ApiResponse::success([
             'withdraw' => $updatedWithdraw

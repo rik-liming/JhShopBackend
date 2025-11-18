@@ -14,6 +14,7 @@ use App\Models\UserAccount;
 use App\Enums\BusinessDef;
 use App\Helpers\MessageHelper;
 use App\Events\TransactionUpdated;
+use App\Events\AdminReddotUpdated;
 
 class AdminOrderController extends Controller
 {
@@ -175,6 +176,9 @@ class AdminOrderController extends Controller
                     $sellerTransaction->reference_id
                 ));
 
+                // 通知红点变更
+                event(new AdminReddotUpdated());
+
             } catch (\Exception $e) {
                 \Log::error('[OrderJudge Reject] error: ' . $e->getMessage());
                 DB::rollBack();
@@ -264,6 +268,9 @@ class AdminOrderController extends Controller
                     $sellerTransaction->transaction_type,
                     $sellerTransaction->reference_id
                 ));
+
+                // 通知红点变更
+                event(new AdminReddotUpdated());
 
             } catch (\Exception $e) {
                 \Log::error('[OrderJudge Approve] error: ' . $e->getMessage());
