@@ -62,7 +62,7 @@ class BusinessDef
     const USER_ROLE_AGENT = 'agent';   // 用户角色：代理
     const USER_ROLE_SELLER = 'seller';   // 用户角色：商户
     const USER_ROLE_BUYER = 'buyer';   // 用户角色：买家
-    const USER_ROLE_AUTO_BUYER = 'auto_buyer';   // 用户角色：自动化买家
+    const USER_ROLE_AUTO_BUYER = 'autoBuyer';   // 用户角色：自动化买家
 
     const USER_STATUS_INACTIVE = 0;   // 用户状态：封禁
     const USER_STATUS_ACTIVE = 1;   // 用户状态：正常

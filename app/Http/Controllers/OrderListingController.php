@@ -249,7 +249,9 @@ class OrderListingController extends Controller
             }
 
             // 修改挂单状态
+            $remain_amount = $orderListing->remain_amount;
             $orderListing->status = BusinessDef::ORDER_LISTING_STATUS_CANCEL;
+            $orderListing->remain_amount = 0.00;
             $orderListing->save();
 
             // 加悲观锁避免余额并发问题
@@ -264,7 +266,7 @@ class OrderListingController extends Controller
             // 返还冻结金额
             $userAccount->available_balance = bcadd(
                 $userAccount->available_balance,
-                $orderListing->remain_amount,
+                $remain_amount,
                 2
             );
             $userAccount->save();

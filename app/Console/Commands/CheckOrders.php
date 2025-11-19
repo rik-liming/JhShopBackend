@@ -37,7 +37,7 @@ class CheckOrders extends Command
 	
 	protected function handleCancelOrders() {
 		// 计算时间阈值
-        $threshold = now()->subMinutes(10);
+        $threshold = now()->subMinutes(6);
 
         // 查询符合条件的订单ID
         $orderIds = Order::where('status', BusinessDef::ORDER_STATUS_WAIT_BUYER)
@@ -61,7 +61,7 @@ class CheckOrders extends Command
 
 	protected function handleArgueOrders() {
 		// 计算时间阈值
-        $threshold = now()->subMinutes(10);
+        $threshold = now()->subMinutes(6);
 
         // 查询符合条件的订单ID
         $orderIds = Order::where('status', BusinessDef::ORDER_STATUS_WAIT_SELLER)

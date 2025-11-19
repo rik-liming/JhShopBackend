@@ -79,6 +79,9 @@ class AdminReportController extends Controller
             return ApiResponse::success([]);
         } else {
             return ApiResponse::error(ApiCode::OPERATION_FAIL);
+            // return ApiResponse::success([
+            //     'error' => $result['error']
+            // ]);
         }
     }
 }

@@ -46,6 +46,7 @@ class ApiCode
     const RECHARGE_REQUEST_LIMIT = 20203;
     const RECHARGE_REQUEST_FAIL = 20204;
     const TRANSFER_USER_ILLEGAL_ROLE = 20205;
+    const TRANSACTION_NOT_FOUND = 20206;
 
     // 配置相关
     const CONFIG_NOT_FOUND = 20300;
@@ -97,6 +98,7 @@ class ApiCode
         self::RECHARGE_REQUEST_LIMIT => '超出充值申请限制',
         self::RECHARGE_REQUEST_FAIL => '充值申请失败',
         self::TRANSFER_USER_ILLEGAL_ROLE => '不支持向该用户转账',
+        self::TRANSACTION_NOT_FOUND => '交易不存在',
 
         self::CONFIG_NOT_FOUND => '配置不存在',
 

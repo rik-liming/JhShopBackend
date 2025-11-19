@@ -74,7 +74,7 @@ class AdminOrderController extends Controller
      */
     public function orderJudge(Request $request)
     {
-        // 验证输入参数
+        // 1. 参数校验
         $request->validate([
             'orderId' => 'required',
             'status' => 'required|in:' . implode(',', [
@@ -86,8 +86,8 @@ class AdminOrderController extends Controller
             'status.required' => '订单状态不能为空'
         ]);
 
-        // 使用悲观锁读取订单，防止重复处理
-        $order = Order::where('id', $request->orderId)->lockForUpdate()->first();
+        // 2. 查询订单（不加锁，仅检查状态）
+        $order = Order::where('id', $request->orderId)->first();
         if (!$order) {
             return ApiResponse::error(ApiCode::ORDER_NOT_FOUND);
         }
@@ -96,17 +96,27 @@ class AdminOrderController extends Controller
             return ApiResponse::error(ApiCode::OPERATION_FAIL);
         }
 
-        // ***********************
-        // 驳回争议处理
-        // ***********************
-        if ($request->status === BusinessDef::ORDER_STATUS_ARGUE_REJECT) {
+        /** @var FinancialRecord $buyerTransaction */
+        /** @var FinancialRecord $sellerTransaction */
+        $buyerTransaction = null;
+        $sellerTransaction = null;
 
-            DB::beginTransaction();
-            try {
-                // 锁订单
-                $order = Order::where('id', $request->orderId)->lockForUpdate()->first();
+        DB::beginTransaction();
+        try {
+            // ======================
+            // 统一重新锁定订单
+            // ======================
+            $order = Order::where('id', $request->orderId)->lockForUpdate()->first();
+            if (!$order) {
+                throw new \Exception("Order not found", ApiCode::ORDER_NOT_FOUND);
+            }
 
-                // 修改订单状态
+            // ======================
+            // 如果状态 = 驳回
+            // ======================
+            if ($request->status === BusinessDef::ORDER_STATUS_ARGUE_REJECT) {
+
+                // 更新订单状态
                 $order->status = BusinessDef::ORDER_STATUS_ARGUE_REJECT;
                 $order->save();
 
@@ -117,27 +127,23 @@ class AdminOrderController extends Controller
                     ->lockForUpdate()->first();
 
                 if (!$buyerTransaction || !$sellerTransaction) {
-                    DB::rollBack();
-                    return ApiResponse::error(ApiCode::TRANSACTION_NOT_FOUND);
+                    throw new \Exception("Transaction not found", ApiCode::TRANSACTION_NOT_FOUND);
                 }
 
-                // 买家财务记录
+                // 更新财务记录
                 $buyerTransaction->actual_amount = 0.00;
                 $buyerTransaction->status = BusinessDef::TRANSACTION_COMPLETED;
                 $buyerTransaction->save();
 
-                // 卖家财务记录
                 $sellerTransaction->actual_amount = 0.00;
                 $sellerTransaction->status = BusinessDef::TRANSACTION_COMPLETED;
                 $sellerTransaction->save();
 
-                // 恢复挂单，锁订单挂单
+                // 恢复挂单
                 $orderListing = OrderListing::where('id', $order->order_listing_id)
                     ->lockForUpdate()->first();
-
                 if (!$orderListing) {
-                    DB::rollBack();
-                    return ApiResponse::error(ApiCode::ORDER_LISTING_NOT_FOUND);
+                    throw new \Exception("Order listing not found", ApiCode::ORDER_LISTING_NOT_FOUND);
                 }
 
                 $orderListing->remain_amount = bcadd($orderListing->remain_amount, $order->amount, 2);
@@ -145,87 +151,41 @@ class AdminOrderController extends Controller
                     $orderListing->status = BusinessDef::ORDER_LISTING_STATUS_ONLINE;
                 }
                 $orderListing->save();
-
-                DB::commit();
-
-                // 推送通知（事务外）
-                MessageHelper::pushMessage($order->buy_user_id, [
-                    'transaction_id' => $buyerTransaction->transaction_id,
-                    'transaction_type' => $buyerTransaction->transaction_type,
-                    'reference_id' => $order->id,
-                ]);
-
-                MessageHelper::pushMessage($order->sell_user_id, [
-                    'transaction_id' => $sellerTransaction->transaction_id,
-                    'transaction_type' => $sellerTransaction->transaction_type,
-                    'reference_id' => $order->id,
-                ]);
-
-                // 事件
-                event(new TransactionUpdated(
-                    $order->buy_user_id,
-                    $buyerTransaction->transaction_id,
-                    $buyerTransaction->transaction_type,
-                    $buyerTransaction->reference_id
-                ));
-
-                event(new TransactionUpdated(
-                    $order->sell_user_id,
-                    $sellerTransaction->transaction_id,
-                    $sellerTransaction->transaction_type,
-                    $sellerTransaction->reference_id
-                ));
-
-                // 通知红点变更
-                event(new AdminReddotUpdated());
-
-            } catch (\Exception $e) {
-                \Log::error('[OrderJudge Reject] error: ' . $e->getMessage());
-                DB::rollBack();
-                return ApiResponse::error(ApiCode::OPERATION_FAIL);
             }
 
-        }
-
-        // ***********************
-        // 争议通过处理
-        // ***********************
-        else if ($request->status === BusinessDef::ORDER_STATUS_ARGUE_APPROVE) {
-
-            DB::beginTransaction();
-            try {
-                // 锁订单
-                $order = Order::where('id', $request->orderId)->lockForUpdate()->first();
+            // ======================
+            // 如果状态 = 争议通过
+            // ======================
+            else if ($request->status === BusinessDef::ORDER_STATUS_ARGUE_APPROVE) {
 
                 // 锁卖家账户
                 $sellerAccount = UserAccount::where('user_id', $order->sell_user_id)
                     ->lockForUpdate()->first();
-
                 if (!$sellerAccount) {
-                    DB::rollBack();
-                    return ApiResponse::error(ApiCode::USER_ACCOUNT_NOT_FOUND);
+                    throw new \Exception("Seller account not found", ApiCode::USER_ACCOUNT_NOT_FOUND);
                 }
 
                 // 修改订单状态
                 $order->status = BusinessDef::ORDER_STATUS_ARGUE_APPROVE;
                 $order->save();
 
-                // 修改卖家余额
+                // 修改余额
                 $balanceBefore = $sellerAccount->total_balance;
                 $balanceAfter = bcsub($sellerAccount->total_balance, $order->total_price, 2);
 
                 $sellerAccount->total_balance = $balanceAfter;
                 $sellerAccount->save();
 
-                // 锁定财务记录
+                // ======================
+                // 锁财务记录
+                // ======================
                 $buyerTransaction = FinancialRecord::where('transaction_id', $order->buy_transaction_id)
                     ->lockForUpdate()->first();
                 $sellerTransaction = FinancialRecord::where('transaction_id', $order->sell_transaction_id)
                     ->lockForUpdate()->first();
 
                 if (!$buyerTransaction || !$sellerTransaction) {
-                    DB::rollBack();
-                    return ApiResponse::error(ApiCode::TRANSACTION_NOT_FOUND);
+                    throw new \Exception("Transaction not found", ApiCode::TRANSACTION_NOT_FOUND);
                 }
 
                 // 买家财务记录
@@ -240,45 +200,73 @@ class AdminOrderController extends Controller
                 $sellerTransaction->status = BusinessDef::TRANSACTION_COMPLETED;
                 $sellerTransaction->save();
 
-                DB::commit();
+                // ======================
+                // 恢复挂单
+                // ======================
+                $orderListing = OrderListing::where('id', $order->order_listing_id)
+                    ->lockForUpdate()->first();
+                if (!$orderListing) {
+                    throw new \Exception("Order listing not found", ApiCode::ORDER_LISTING_NOT_FOUND);
+                }
 
-                // 推送通知
-                MessageHelper::pushMessage($order->buy_user_id, [
-                    'transaction_id' => $buyerTransaction->transaction_id,
-                    'transaction_type' => $buyerTransaction->transaction_type,
-                    'reference_id' => $order->id,
-                ]);
+                if ($orderListing->status == BusinessDef::ORDER_LISTING_STATUS_STOCK_LOCK) {
+                    // 恢复可用余额
+                    $sellerAccount->available_balance = bcadd(
+                        $sellerAccount->available_balance,
+                        $orderListing->remain_amount,
+                        2
+                    );
+                    $sellerAccount->save();
 
-                MessageHelper::pushMessage($order->sell_user_id, [
-                    'transaction_id' => $sellerTransaction->transaction_id,
-                    'transaction_type' => $sellerTransaction->transaction_type,
-                    'reference_id' => $order->id,
-                ]);
-
-                event(new TransactionUpdated(
-                    $order->buy_user_id,
-                    $buyerTransaction->transaction_id,
-                    $buyerTransaction->transaction_type,
-                    $buyerTransaction->reference_id
-                ));
-
-                event(new TransactionUpdated(
-                    $order->sell_user_id,
-                    $sellerTransaction->transaction_id,
-                    $sellerTransaction->transaction_type,
-                    $sellerTransaction->reference_id
-                ));
-
-                // 通知红点变更
-                event(new AdminReddotUpdated());
-
-            } catch (\Exception $e) {
-                \Log::error('[OrderJudge Approve] error: ' . $e->getMessage());
-                DB::rollBack();
-                return ApiResponse::error(ApiCode::ORDER_CONFIRM_FAIL);
+                    $orderListing->remain_amount = 0;
+                    $orderListing->status = BusinessDef::ORDER_LISTING_STATUS_SELL_OUT;
+                    $orderListing->save();
+                }
             }
+
+            DB::commit();
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error("[OrderJudge] error: " . $e->getMessage());
+            return ApiResponse::error($e->getCode());
         }
+
+        // ======================
+        // 事务提交后再推送事件（避免数据不一致）
+        // ======================
+
+        if ($buyerTransaction && $sellerTransaction) {
+            MessageHelper::pushMessage($order->buy_user_id, [
+                'transaction_id' => $buyerTransaction->transaction_id,
+                'transaction_type' => $buyerTransaction->transaction_type,
+                'reference_id' => $order->id,
+            ]);
+
+            MessageHelper::pushMessage($order->sell_user_id, [
+                'transaction_id' => $sellerTransaction->transaction_id,
+                'transaction_type' => $sellerTransaction->transaction_type,
+                'reference_id' => $order->id,
+            ]);
+
+            event(new TransactionUpdated(
+                $order->buy_user_id,
+                $buyerTransaction->transaction_id,
+                $buyerTransaction->transaction_type,
+                $buyerTransaction->reference_id
+            ));
+
+            event(new TransactionUpdated(
+                $order->sell_user_id,
+                $sellerTransaction->transaction_id,
+                $sellerTransaction->transaction_type,
+                $sellerTransaction->reference_id
+            ));
+        }
+
+        event(new AdminReddotUpdated());
 
         return ApiResponse::success([]);
     }
+
 }

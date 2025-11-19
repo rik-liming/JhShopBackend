@@ -110,18 +110,19 @@ class ReportHelper
             $agentReports = Order::from('jh_user_order as orders')
                 ->select(
                     'u.root_agent_id as agent_id',
-                    'u.email as user_email',
+                    'agent.email as agent_email',
                     DB::raw('COUNT(*) as order_count'),
                     DB::raw('SUM(orders.amount) as total_amount')
                 )
                 ->join('jh_user as u', 'orders.sell_user_id', '=', 'u.id')
+                ->join('jh_user as agent', 'u.root_agent_id', '=', 'agent.id')
                 ->whereBetween('orders.created_at', [$start, $end])
                 ->whereIn('orders.status', [
                     BusinessDef::ORDER_STATUS_COMPLETED,
                     BusinessDef::ORDER_STATUS_ARGUE_APPROVE,
                 ])
                 ->whereIn('u.role', ['seller', 'agent']) // 只统计卖家订单
-                ->groupBy('u.root_agent_id', 'u.email')
+                ->groupBy('u.root_agent_id', 'agent.email')
                 ->get();
 
             $agentCommissionRate = $config->agent_commission_rate ?? 0;
@@ -135,7 +136,7 @@ class ReportHelper
                     [
                         'report_date' => $date, 
                         'user_id' => $r->agent_id, 
-                        'user_email' => $r->user_email, 
+                        'user_email' => $r->agent_email, 
                         'type' => 'agent'
                     ],
                     [
