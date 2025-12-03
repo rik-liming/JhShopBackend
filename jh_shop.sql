@@ -195,7 +195,7 @@ CREATE TABLE `jh_platform_config` (
 --
 
 INSERT INTO `jh_platform_config` (`id`, `payment_address`, `payment_qr_code`, `transfer_fee`, `withdrawl_fee`, `agent_commission_rate`, `buyer_commission_rate`, `exchange_rate_platform`, `exchange_rate_alipay`, `exchange_rate_wechat`, `exchange_rate_bank`, `exchange_rate_ecny`, `advertisement_text`, `remote_order_config`, `created_at`, `updated_at`) VALUES
-(1, 'jjusfafxsdfsjeexxseeed', NULL, '2.00', '2.00', '10.00', '20.00', '7.20', '7.30', '7.40', '7.50', '7.60', 'Welcome to our platform!', '{\"openMarkets\": [\"alipay\", \"wechat\", \"bank\", \"ecny\"], \"amountOptions\": [500, 1000, 2000]}', '2025-10-14 20:51:37', '2025-11-16 14:34:09');
+(1, 'jjusfafxsdfsjeexxseeed', NULL, '0.00', '2.00', '10.00', '20.00', '7.20', '7.30', '7.40', '7.50', '7.60', 'Welcome to our platform!', '{\"openMarkets\": [\"alipay\", \"wechat\", \"bank\", \"ecny\"], \"amountOptions\": [500, 1000, 2000]}', '2025-10-14 20:51:37', '2025-11-16 14:34:09');
 
 -- --------------------------------------------------------
 

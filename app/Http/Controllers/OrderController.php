@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\Redis;
 use App\Helpers\MessageHelper;
 use App\Enums\BusinessDef;
 use App\Events\TransactionUpdated;
+use App\Events\OrderUpdated;
 
 class OrderController extends Controller
 {
@@ -178,7 +179,7 @@ class OrderController extends Controller
             $orderListing->remain_amount = bcsub($orderListing->remain_amount, $amount, 2);
 
             // 卖完自动下架，此时进入锁库存冻结状态
-            if ($orderListing->remain_amount < 10) {
+            if ($orderListing->remain_amount < 10 || $orderListing->remain_amount < $orderListing->min_sale_amount) {
                 $orderListing->status = BusinessDef::ORDER_LISTING_STATUS_STOCK_LOCK;
             }
 
@@ -371,7 +372,7 @@ class OrderController extends Controller
             $matchedOrderListing->remain_amount = bcsub($matchedOrderListing->remain_amount, $amount, 2);
 
             // 卖完自动下架
-            if ($matchedOrderListing->remain_amount < 10) {
+            if ($matchedOrderListing->remain_amount < 10 || $matchedOrderListing->remain_amount < $matchedOrderListing->min_sale_amount) {
                 $matchedOrderListing->status = BusinessDef::ORDER_LISTING_STATUS_STOCK_LOCK;
             }
             $matchedOrderListing->save();
@@ -605,6 +606,11 @@ class OrderController extends Controller
                     $sellerTransaction->reference_id,
                 ));
 
+                // 通知订单状态变动
+                event(new OrderUpdated(
+                    $order->id
+                ));
+
             } catch (\Exception $e) {
                 \Log::error('[OrderConfirm][BUYER] error: ' . $e->getMessage());
                 DB::rollBack();
@@ -717,6 +723,11 @@ class OrderController extends Controller
                     $buyerTransaction->transaction_id,
                     $buyerTransaction->transaction_type,
                     $buyerTransaction->reference_id,
+                ));
+
+                // 通知订单状态变动
+                event(new OrderUpdated(
+                    $order->id
                 ));
 
             } catch (\Exception $e) {
@@ -994,6 +1005,11 @@ class OrderController extends Controller
                     $sellerTransaction->transaction_id,
                     $sellerTransaction->transaction_type,
                     $sellerTransaction->reference_id,
+                ));
+
+                // 通知订单状态变动
+                event(new OrderUpdated(
+                    $order->id
                 ));
 
             } catch (\Exception $e) {

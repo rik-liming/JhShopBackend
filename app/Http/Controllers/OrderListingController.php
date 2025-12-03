@@ -24,7 +24,7 @@ class OrderListingController extends Controller
     {
         // 验证输入参数
         $request->validate([
-            'amount' => 'required|numeric|min:0.01',
+            'amount' => 'required|numeric|min:100',
             'min_sale_amount' => 'required|numeric|min:0',
             'payment_method' => 'required|in:' . implode(',', [
                 BusinessDef::PAYMENT_METHOD_ALIPAY,
@@ -34,7 +34,7 @@ class OrderListingController extends Controller
             ]),
         ], [
             'amount.required' => '金额不能为空',
-            'amount.min' => '金额至少0.01',
+            'amount.min' => '金额至少100',
             'min_sale_amount.required' => '最低销售额不能为空',
             'payment_method.required' => '卖场不能为空'
         ]);

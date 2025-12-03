@@ -15,6 +15,7 @@ use App\Enums\BusinessDef;
 use App\Helpers\MessageHelper;
 use App\Events\TransactionUpdated;
 use App\Events\AdminReddotUpdated;
+use App\Events\OrderUpdated;
 
 class AdminOrderController extends Controller
 {
@@ -265,6 +266,11 @@ class AdminOrderController extends Controller
         }
 
         event(new AdminReddotUpdated());
+
+        // 通知订单状态变动
+        event(new OrderUpdated(
+            $order->id
+        ));
 
         return ApiResponse::success([]);
     }

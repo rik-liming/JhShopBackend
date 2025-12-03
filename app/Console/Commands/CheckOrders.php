@@ -13,6 +13,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\Redis;
 use App\Events\AdminBusinessUpdated;
 use App\Events\AdminReddotUpdated;
+use App\Events\OrderUpdated;
 
 class CheckOrders extends Command
 {
@@ -124,13 +125,19 @@ class CheckOrders extends Command
             $orderListing->save();
 
             DB::commit();
-            return ['success' => true, 'date' => now()];
 
         } catch (\Throwable $e) {
             DB::rollBack();
             \Log::error('[ExpireOrder] error occurred: ' . $e->getMessage());
             return ['success' => false, 'error' => $e->getMessage()];
         }
+
+        // 通知订单状态变动
+        event(new OrderUpdated(
+            $order->id
+        ));
+
+        return ['success' => true, 'date' => now()];
     }
 
     
@@ -154,6 +161,11 @@ class CheckOrders extends Command
             $order->save();
 
             DB::commit(); // 事务到此完成
+
+            // 通知订单状态变动
+            event(new OrderUpdated(
+                $order->id
+            ));
 
         } catch (\Throwable $e) {
             DB::rollBack();
@@ -192,6 +204,11 @@ class CheckOrders extends Command
         // 通知管理员业务变动
         event(new AdminBusinessUpdated());
         event(new AdminReddotUpdated());
+
+        // 通知订单状态变动
+        event(new OrderUpdated(
+            $order->id
+        ));
 
         return ['success' => true, 'date' => now()];
     }
