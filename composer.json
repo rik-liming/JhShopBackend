@@ -10,6 +10,7 @@
         "laravel/framework": "^9.19",
         "laravel/sanctum": "^3.0",
         "laravel/tinker": "^2.7",
+        "pragmarx/google2fa": "^8.0",
         "pusher/pusher-php-server": "^7.2",
         "tymon/jwt-auth": "^2.2"
     },
