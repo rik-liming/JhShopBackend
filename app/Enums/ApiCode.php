@@ -38,6 +38,7 @@ class ApiCode
     const ORDER_LISTING_MATCH_FAIL = 20106;
     const ORDER_LISTING_PAYMENT_METHOD_LIMIT = 20107;
     const ORDER_LISTING_CANCEL_FORBIDDEN = 20108;
+    const ORDER_EXPIRED = 20109;
 
     // 交易相关
     const TRANSFER_NOT_FOUND = 20200;
@@ -91,6 +92,7 @@ class ApiCode
         self::ORDER_LISTING_MATCH_FAIL => '订单匹配失败',
         self::ORDER_LISTING_PAYMENT_METHOD_LIMIT => '超出挂单限制',
         self::ORDER_LISTING_CANCEL_FORBIDDEN => '当前挂单不允许撤销',
+        self::ORDER_EXPIRED => '订单已超时',
 
         self::TRANSFER_NOT_FOUND => '转账记录不存在',
         self::RECHARGE_NOT_FOUND => '充值记录不存在',

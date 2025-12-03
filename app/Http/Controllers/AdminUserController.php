@@ -52,6 +52,9 @@ class AdminUserController extends Controller
                 'invite_code',
                 'status',
                 'created_at',
+                'root_agent_id',
+                'root_agent_name',
+                'has_commission',
             )
             ->where('status', '!=', -1)
             ->orderBy('id', 'desc');
@@ -407,6 +410,38 @@ class AdminUserController extends Controller
         }
 
         // 保存更新
+        $user->save();
+
+        return ApiResponse::success([]);
+    }
+
+    /**
+     * 修改当前用户佣金发放设置
+     */
+    public function updateCommissionSwitch(Request $request)
+    {
+        $request->validate([
+            'user_id' => 'required',
+            'has_commission' => 'required',
+        ], [
+            'user_id.required' => '用户ID不能为空',
+            'has_commission.required' => '佣金开关值不能为空',
+        ]);
+
+        $userId = $request->input('user_id', '');
+        $hasCommission = $request->input('has_commission', '');
+
+        if (!$userId) {
+            return ApiResponse::error(ApiCode::USER_NOT_FOUND);
+        }
+
+        $user = User::where('id', $userId)
+        ->first();
+        if (!$user) {
+            return ApiResponse::error(ApiCode::USER_NOT_FOUND);
+        }
+
+        $user->has_commission = $hasCommission;
         $user->save();
 
         return ApiResponse::success([]);

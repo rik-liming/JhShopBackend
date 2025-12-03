@@ -38,6 +38,7 @@ class BusinessDef
     const PAYMENT_METHOD_ALIPAY = 'alipay'; // 支付方式：alipay
     const PAYMENT_METHOD_WECHAT = 'wechat'; // 支付方式：wechat
     const PAYMENT_METHOD_BANK = 'bank';   // 支付方式：bank
+    const PAYMENT_METHOD_ECNY = 'ecny';   // 支付方式：ecny
 
     const ORDER_STATUS_WAIT_BUYER = 0;   // 订单状态：等待买家确认
     const ORDER_STATUS_WAIT_SELLER = 1;  // 订单状态：等待卖家确认

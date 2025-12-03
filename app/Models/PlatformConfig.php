@@ -25,6 +25,7 @@ class PlatformConfig extends Authenticatable
         'exchange_rate_alipay',
         'exchange_rate_wechat',
         'exchange_rate_bank',
+        'exchange_rate_ecny',
         'advertisement_text',
         'remote_order_config',
     ];
@@ -42,6 +43,7 @@ class PlatformConfig extends Authenticatable
         'exchange_rate_alipay' => 'float',
         'exchange_rate_wechat' => 'float',
         'exchange_rate_bank' => 'float',
+        'exchange_rate_ecny' => 'float',
     ];
 
     /**

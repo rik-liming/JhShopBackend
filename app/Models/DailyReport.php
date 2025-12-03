@@ -23,6 +23,7 @@ class DailyReport extends Authenticatable
         'total_amount',
         'commission_rate',
         'commission_amount',
+        'has_commission',
     ];
 
     protected $hidden = [

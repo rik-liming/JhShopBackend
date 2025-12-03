@@ -85,6 +85,7 @@ class OrderController extends Controller
             BusinessDef::PAYMENT_METHOD_ALIPAY => $config->exchange_rate_alipay,
             BusinessDef::PAYMENT_METHOD_WECHAT => $config->exchange_rate_wechat,
             BusinessDef::PAYMENT_METHOD_BANK   => $config->exchange_rate_bank,
+            BusinessDef::PAYMENT_METHOD_ECNY   => $config->exchange_rate_ecny,
             default => 7.25,
         };
 
@@ -227,7 +228,7 @@ class OrderController extends Controller
         $request->validate([
             'auto_buyer_id' => 'required',
             'cny_amount' => 'required|numeric|min:1', // 下单金额必须大于 0
-            'payment_method' => 'required|in:bank,alipay,wechat',
+            'payment_method' => 'required|in:bank,alipay,wechat,ecny',
         ], [
             'auto_buyer_id.required' => '下单用户ID不能为空',
             'cny_amount.required' => '下单金额不能为空',
@@ -261,6 +262,7 @@ class OrderController extends Controller
             BusinessDef::PAYMENT_METHOD_ALIPAY => $config->exchange_rate_alipay,
             BusinessDef::PAYMENT_METHOD_WECHAT => $config->exchange_rate_wechat,
             BusinessDef::PAYMENT_METHOD_BANK   => $config->exchange_rate_bank,
+            BusinessDef::PAYMENT_METHOD_ECNY   => $config->exchange_rate_ecny,
             default => 7.25,
         };
 
@@ -925,6 +927,10 @@ class OrderController extends Controller
         $order = Order::where('id', $request->order_id)->first();
         if (!$order) {
             return ApiResponse::error(ApiCode::ORDER_NOT_FOUND);
+        }
+
+        if ($order->status === BusinessDef::ORDER_STATUS_EXPIRED) {
+            return ApiResponse::error(ApiCode::ORDER_EXPIRED);
         }
 
         if ($userId == $order->buy_user_id && $order->status == BusinessDef::ORDER_STATUS_WAIT_BUYER) {

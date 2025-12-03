@@ -30,6 +30,7 @@ class OrderListingController extends Controller
                 BusinessDef::PAYMENT_METHOD_ALIPAY,
                 BusinessDef::PAYMENT_METHOD_WECHAT,
                 BusinessDef::PAYMENT_METHOD_BANK,
+                BusinessDef::PAYMENT_METHOD_ECNY,
             ]),
         ], [
             'amount.required' => '金额不能为空',
@@ -125,6 +126,7 @@ class OrderListingController extends Controller
                 BusinessDef::PAYMENT_METHOD_ALIPAY,
                 BusinessDef::PAYMENT_METHOD_WECHAT,
                 BusinessDef::PAYMENT_METHOD_BANK,
+                BusinessDef::PAYMENT_METHOD_ECNY,
             ]),
         ], [
             'payment_method.required' => '卖场不能为空'

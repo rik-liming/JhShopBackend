@@ -55,6 +55,7 @@ class AuthController extends Controller
 
             $userAccount = UserAccount::create([
                 'user_id' => $user->id,
+                'payment_password' => Hash::make($request->password),
             ]);
 
             return $user;

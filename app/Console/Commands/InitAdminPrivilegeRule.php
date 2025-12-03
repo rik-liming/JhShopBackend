@@ -524,6 +524,15 @@ class InitAdminPrivilegeRule extends Command
                 'sort_order' => 55,
                 'status' => 1,
             ],
+            [
+                'pid' => 20,
+                'router_key' => '/user/index:switchCommission',
+                'type' => 'action',
+                'name' => '开启/关闭佣金',
+                'remark' => '开启/关闭佣金',
+                'sort_order' => 56,
+                'status' => 1,
+            ],
         ];
 
         // 如果数据存在则清空

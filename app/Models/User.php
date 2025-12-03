@@ -29,6 +29,7 @@ class User extends Authenticatable
         'last_login_ip',
         'last_login_time',
         'invite_code',
+        'has_commission',
         'status',
         'two_factor_secret',
     ];

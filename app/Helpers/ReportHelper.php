@@ -34,6 +34,7 @@ class ReportHelper
                 ->select(
                     'orders.buy_user_id as user_id',
                     'u.email as user_email',
+                    'u.has_commission as has_commission',
                     DB::raw('COUNT(*) as order_count'),
                     DB::raw('SUM(orders.amount) as total_amount')
                 )
@@ -65,6 +66,7 @@ class ReportHelper
                         'total_amount' => $r->total_amount,
                         'commission_rate' => $buyerCommissionRate,
                         'commission_amount' => $buyerCommission,
+                        'has_commission' => $r->has_commission,
                     ]
                 );
 			}
@@ -99,7 +101,7 @@ class ReportHelper
                     ],
                     [
                         'order_count' => $r->order_count, 
-                        'total_amount' => $r->total_amount
+                        'total_amount' => $r->total_amount,
                     ]
                 );
             }
@@ -111,6 +113,7 @@ class ReportHelper
                 ->select(
                     'u.root_agent_id as agent_id',
                     'agent.email as agent_email',
+                    'agent.has_commission as agent_has_commission',
                     DB::raw('COUNT(*) as order_count'),
                     DB::raw('SUM(orders.amount) as total_amount')
                 )
@@ -144,6 +147,7 @@ class ReportHelper
                         'total_amount' => $r->total_amount,
                         'commission_rate' => $agentCommissionRate,
                         'commission_amount' => $agentCommission,
+                        'has_commission' => $r->agent_has_commission,
                     ]
                 );
             }

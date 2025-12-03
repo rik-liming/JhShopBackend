@@ -39,7 +39,7 @@ class PaymentMethodController extends Controller
     {
         // 验证输入参数
         $request->validate([
-            'payment_method' => 'required|in:bank,alipay,wechat',
+            'payment_method' => 'required|in:bank,alipay,wechat,ecny',
             'account_number' => 'required',
             'account_name' => 'required',
             'verify_code' => 'required',
@@ -116,7 +116,7 @@ class PaymentMethodController extends Controller
         // 验证输入参数
         $request->validate([
             'id' => 'required',
-            'payment_method' => 'required|in:bank,alipay,wechat',
+            'payment_method' => 'required|in:bank,alipay,wechat,ecny',
             'account_number' => 'required',
             'account_name' => 'required',
             'verify_code' => 'required',

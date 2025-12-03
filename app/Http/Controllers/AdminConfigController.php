@@ -41,6 +41,7 @@ class AdminConfigController extends Controller
             'exchange_rate_alipay' => 'nullable|numeric|min:0',
             'exchange_rate_wechat' => 'nullable|numeric|min:0',
             'exchange_rate_bank' => 'nullable|numeric|min:0',
+            'exchange_rate_ecny' => 'nullable|numeric|min:0',
             'advertisement_text' => 'nullable|string',
             'remote_order_config' => 'nullable|array'
         ]);

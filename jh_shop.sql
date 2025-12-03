@@ -49,7 +49,7 @@ CREATE TABLE `jh_admin` (
 --
 
 INSERT INTO `jh_admin` (`id`, `role`, `user_name`, `real_name`, `password`, `email`, `phone`, `avatar`, `last_login_ip`, `last_login_time`, `created_at`, `updated_at`, `status`, `two_factor_secret`) VALUES
-(1, 'superAdmin', 'superAdmin', '超级管理员', '$2y$10$7N/zQ0VifAsI9ruJsRe9P.AZYZizUDddAwBv9cNGw7w0ABiyMXEDC', 'superadmin@jh.com', '13800000002', '/avatars/superadmin.png', '8.219.234.249', '2025-11-18 10:54:19', '2025-10-14 20:41:55', '2025-11-18 10:54:19', 1, 'GMAPZXJRX6LZDUDO');
+(1, 'superAdmin', 'superAdmin', '超级管理员', '$2y$10$7N/zQ0VifAsI9ruJsRe9P.AZYZizUDddAwBv9cNGw7w0ABiyMXEDC', 'superadmin@jh.com', '13800000002', '/avatars/superadmin.png', '8.219.234.249', '2025-11-18 10:54:19', '2025-10-14 20:41:55', '2025-11-18 10:54:19', 1, '');
 
 -- --------------------------------------------------------
 
@@ -129,7 +129,8 @@ INSERT INTO `jh_admin_privilege_rule` (`id`, `pid`, `router_key`, `type`, `name`
 (52, 49, '/report/auto_buyer', 'menu', '自动化买家', '自动化买家', '2025-11-18 11:05:57', '2025-11-18 11:05:57', 52, 1),
 (53, 52, '/report/auto_buyer:scan', 'action', '查看', '查看', '2025-11-18 11:05:57', '2025-11-18 11:05:57', 53, 1),
 (54, 49, '/report/buyer', 'menu', '系统买家', '系统买家', '2025-11-18 11:05:57', '2025-11-18 11:05:57', 54, 1),
-(55, 54, '/report/buyer:select', 'action', '查看', '查看', '2025-11-18 11:05:57', '2025-11-18 11:05:57', 55, 1);
+(55, 54, '/report/buyer:select', 'action', '查看', '查看', '2025-11-18 11:05:57', '2025-11-18 11:05:57', 55, 1),
+(56, 20, '/user/index:switchCommission', 'action', '开启/关闭佣金', '开启/关闭佣金', '2025-11-18 11:05:57', '2025-11-18 11:05:57', 56, 1);
 
 -- --------------------------------------------------------
 
@@ -182,6 +183,7 @@ CREATE TABLE `jh_platform_config` (
   `exchange_rate_alipay` decimal(5,2) NOT NULL DEFAULT '0.00' COMMENT '支付宝兑换比率',
   `exchange_rate_wechat` decimal(5,2) NOT NULL DEFAULT '0.00' COMMENT '微信兑换比率',
   `exchange_rate_bank` decimal(5,2) NOT NULL DEFAULT '0.00' COMMENT '银行卡兑换比率',
+  `exchange_rate_ecny` decimal(5,2) NOT NULL DEFAULT '0.00' COMMENT '数字人民币兑换比率',
   `advertisement_text` varchar(1024) DEFAULT NULL COMMENT '平台广告语',
   `remote_order_config` json DEFAULT NULL COMMENT '远程下单扩展配置（JSON 格式）',
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -192,8 +194,8 @@ CREATE TABLE `jh_platform_config` (
 -- 转存表中的数据 `jh_platform_config`
 --
 
-INSERT INTO `jh_platform_config` (`id`, `payment_address`, `payment_qr_code`, `transfer_fee`, `withdrawl_fee`, `agent_commission_rate`, `buyer_commission_rate`, `exchange_rate_platform`, `exchange_rate_alipay`, `exchange_rate_wechat`, `exchange_rate_bank`, `advertisement_text`, `remote_order_config`, `created_at`, `updated_at`) VALUES
-(1, 'jjusfafxsdfsjeexxseeed', NULL, '2.00', '2.00', '10.00', '20.00', '7.20', '7.30', '7.40', '7.50', 'Welcome to our platform!', '{\"openMarkets\": [\"alipay\", \"wechat\", \"bank\"], \"amountOptions\": [500, 1000, 2000]}', '2025-10-14 20:51:37', '2025-11-16 14:34:09');
+INSERT INTO `jh_platform_config` (`id`, `payment_address`, `payment_qr_code`, `transfer_fee`, `withdrawl_fee`, `agent_commission_rate`, `buyer_commission_rate`, `exchange_rate_platform`, `exchange_rate_alipay`, `exchange_rate_wechat`, `exchange_rate_bank`, `exchange_rate_ecny`, `advertisement_text`, `remote_order_config`, `created_at`, `updated_at`) VALUES
+(1, 'jjusfafxsdfsjeexxseeed', NULL, '2.00', '2.00', '10.00', '20.00', '7.20', '7.30', '7.40', '7.50', '7.60', 'Welcome to our platform!', '{\"openMarkets\": [\"alipay\", \"wechat\", \"bank\", \"ecny\"], \"amountOptions\": [500, 1000, 2000]}', '2025-10-14 20:51:37', '2025-11-16 14:34:09');
 
 -- --------------------------------------------------------
 
@@ -217,6 +219,7 @@ CREATE TABLE `jh_user` (
   `last_login_ip` varchar(50) DEFAULT '' COMMENT '最后登录IP',
   `last_login_time` datetime DEFAULT NULL COMMENT '最后登录时间',
   `invite_code` varchar(50) DEFAULT NULL COMMENT '邀请码',
+  `has_commission` tinyint(1) NOT NULL DEFAULT '1' COMMENT '是否计算佣金：0无佣，1有佣',
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   `status` tinyint(1) NOT NULL DEFAULT '1' COMMENT '状态：0禁用，1启用, -1删除',
@@ -227,13 +230,13 @@ CREATE TABLE `jh_user` (
 -- 转存表中的数据 `jh_user`
 --
 
-INSERT INTO `jh_user` (`id`, `inviter_id`, `inviter_name`, `root_agent_id`, `root_agent_name`, `role`, `user_name`, `real_name`, `password`, `email`, `phone`, `avatar`, `last_login_ip`, `last_login_time`, `invite_code`, `created_at`, `updated_at`, `status`, `two_factor_secret`) VALUES
-(1, 0, '', 0, '', 'platform', 'rootAgent', '平台总代理', '$2y$10$7N/zQ0VifAsI9ruJsRe9P.AZYZizUDddAwBv9cNGw7w0ABiyMXEDC', 'platform@jh.com', '13800000001', '/avatars/admin.png', '127.0.0.1', '2025-10-14 20:46:59', '88888888', '2025-10-14 20:46:59', '2025-10-14 20:46:59', 1, ''),
-(2, 1, 'rootAgent', 2, 'agent1', 'agent', 'agent1', '代理1', '$2y$10$7N/zQ0VifAsI9ruJsRe9P.AZYZizUDddAwBv9cNGw7w0ABiyMXEDC', 'agent1@jh.com', '13800000002', '/avatars/agent.png', '192.168.0.10', '2025-10-14 20:46:59', '88000001', '2025-10-14 20:46:59', '2025-10-14 20:46:59', 1, ''),
-(3, 2, 'agent1', 2, 'agent1', 'seller', 'seller1', '卖家1', '$2y$10$7N/zQ0VifAsI9ruJsRe9P.AZYZizUDddAwBv9cNGw7w0ABiyMXEDC', 'seller1@jh.com', '13800000003', '/avatars/seller.png', '192.168.0.11', '2025-10-14 20:46:59', NULL, '2025-10-14 20:46:59', '2025-10-14 20:46:59', 1, ''),
-(4, 3, 'seller1', 2, 'agent1', 'seller', 'seller2', '卖家2', '$2y$10$7N/zQ0VifAsI9ruJsRe9P.AZYZizUDddAwBv9cNGw7w0ABiyMXEDC', 'seller2@jh.com', '13800000004', '/avatars/seller.png', '192.168.0.11', '2025-10-14 20:46:59', NULL, '2025-10-14 20:46:59', '2025-10-14 20:46:59', 1, ''),
-(5, 3, 'seller1', 0, '', 'buyer', 'buyer1', '买家1', '$2y$10$7N/zQ0VifAsI9ruJsRe9P.AZYZizUDddAwBv9cNGw7w0ABiyMXEDC', 'buyer1@jh.com', '13800000005', '/avatars/buyer.png', '10.0.0.1', '2025-10-14 20:46:59', NULL, '2025-10-14 20:46:59', '2025-10-14 20:46:59', 1, ''),
-(6, 0, '', 0, '', 'autoBuyer', 'autoBuyer1', '自动化买家1', '$2y$10$7N/zQ0VifAsI9ruJsRe9P.AZYZizUDddAwBv9cNGw7w0ABiyMXEDC', 'autobuyer@jh.com', '13800000006', '/avatars/buyer.png', '8.219.234.249', '2025-11-05 09:23:15', NULL, '2025-10-14 20:46:59', '2025-11-05 09:23:15', 1, 'SVRZGYU77LAPM7ED');
+INSERT INTO `jh_user` (`id`, `inviter_id`, `inviter_name`, `root_agent_id`, `root_agent_name`, `role`, `user_name`, `real_name`, `password`, `email`, `phone`, `avatar`, `last_login_ip`, `last_login_time`, `invite_code`, `has_commission`, `created_at`, `updated_at`, `status`, `two_factor_secret`) VALUES
+(1, 0, '', 0, '', 'platform', 'rootAgent', '平台总代理', '$2y$10$7N/zQ0VifAsI9ruJsRe9P.AZYZizUDddAwBv9cNGw7w0ABiyMXEDC', 'platform@jh.com', '13800000001', '/avatars/admin.png', '127.0.0.1', '2025-10-14 20:46:59', '88888888', 1, '2025-10-14 20:46:59', '2025-10-14 20:46:59', 1, ''),
+(2, 1, 'rootAgent', 2, 'agent1', 'agent', 'agent1', '代理1', '$2y$10$7N/zQ0VifAsI9ruJsRe9P.AZYZizUDddAwBv9cNGw7w0ABiyMXEDC', 'agent1@jh.com', '13800000002', '/avatars/agent.png', '192.168.0.10', '2025-10-14 20:46:59', '88000001', 1, '2025-10-14 20:46:59', '2025-10-14 20:46:59', 1, ''),
+(3, 2, 'agent1', 2, 'agent1', 'seller', 'seller1', '卖家1', '$2y$10$7N/zQ0VifAsI9ruJsRe9P.AZYZizUDddAwBv9cNGw7w0ABiyMXEDC', 'seller1@jh.com', '13800000003', '/avatars/seller.png', '192.168.0.11', '2025-10-14 20:46:59', NULL, 1, '2025-10-14 20:46:59', '2025-10-14 20:46:59', 1, ''),
+(4, 3, 'seller1', 2, 'agent1', 'seller', 'seller2', '卖家2', '$2y$10$7N/zQ0VifAsI9ruJsRe9P.AZYZizUDddAwBv9cNGw7w0ABiyMXEDC', 'seller2@jh.com', '13800000004', '/avatars/seller.png', '192.168.0.11', '2025-10-14 20:46:59', NULL, 1, '2025-10-14 20:46:59', '2025-10-14 20:46:59', 1, ''),
+(5, 3, 'seller1', 0, '', 'buyer', 'buyer1', '买家1', '$2y$10$7N/zQ0VifAsI9ruJsRe9P.AZYZizUDddAwBv9cNGw7w0ABiyMXEDC', 'buyer1@jh.com', '13800000005', '/avatars/buyer.png', '10.0.0.1', '2025-10-14 20:46:59', NULL, 1, '2025-10-14 20:46:59', '2025-10-14 20:46:59', 1, ''),
+(6, 0, '', 0, '', 'autoBuyer', 'autoBuyer1', '自动化买家1', '$2y$10$7N/zQ0VifAsI9ruJsRe9P.AZYZizUDddAwBv9cNGw7w0ABiyMXEDC', 'autobuyer@jh.com', '13800000006', '/avatars/buyer.png', '8.219.234.249', '2025-11-05 09:23:15', NULL, 1, '2025-10-14 20:46:59', '2025-11-05 09:23:15', 1, '');
 
 -- --------------------------------------------------------
 
@@ -279,6 +282,7 @@ CREATE TABLE `jh_user_daily_report` (
   `total_amount` decimal(18,2) NOT NULL DEFAULT '0.00' COMMENT '订单总额',
   `commission_rate` decimal(5,2) NOT NULL DEFAULT '0.00' COMMENT '佣金比例',
   `commission_amount` decimal(5,2) DEFAULT '0.00' COMMENT '佣金数额',
+  `has_commission` tinyint(1) NOT NULL DEFAULT '1' COMMENT '是否计算佣金：0无佣，1有佣',
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户日报表';
@@ -323,7 +327,7 @@ CREATE TABLE `jh_user_order` (
   `sell_transaction_id` varchar(255) DEFAULT NULL COMMENT '卖家的交易ID（例如，支付流水号、转账流水号）',
   `type` enum('normal','auto') NOT NULL DEFAULT 'normal' COMMENT 'normal: 普通订单, auto: 自动化订单',
   `amount` decimal(15,2) UNSIGNED NOT NULL COMMENT '购买数量',
-  `payment_method` enum('bank','alipay','wechat') NOT NULL COMMENT '支付方式',
+  `payment_method` enum('bank','alipay','wechat','ecny') NOT NULL COMMENT '支付方式',
   `buy_user_id` int(10) UNSIGNED NOT NULL COMMENT '购买用户ID（外键关联 jh_user 表）',
   `buy_account_name` varchar(255) NOT NULL COMMENT '购买账户名/持卡人',
   `buy_account_number` varchar(255) NOT NULL COMMENT '购买账户号码/卡号',
@@ -355,7 +359,7 @@ CREATE TABLE `jh_user_order_listing` (
   `amount` decimal(15,2) NOT NULL COMMENT '总数量',
   `remain_amount` decimal(15,2) NOT NULL COMMENT '剩余数量',
   `min_sale_amount` decimal(15,2) UNSIGNED NOT NULL COMMENT '最低售卖数量，低于此数量下架挂单',
-  `payment_method` enum('bank','alipay','wechat') DEFAULT NULL COMMENT '支付方式',
+  `payment_method` enum('bank','alipay','wechat','ecny') DEFAULT NULL COMMENT '支付方式',
   `status` tinyint(1) NOT NULL DEFAULT '1' COMMENT '挂单状态：0 已下架，1 在售',
   `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间'
@@ -370,7 +374,7 @@ CREATE TABLE `jh_user_order_listing` (
 CREATE TABLE `jh_user_payment_method` (
   `id` int(10) UNSIGNED NOT NULL COMMENT '支付方式ID',
   `user_id` int(10) UNSIGNED NOT NULL COMMENT '用户ID（外键关联 jh_user 表）',
-  `payment_method` enum('bank','alipay','wechat') NOT NULL COMMENT '支付方式类型：银行卡、支付宝、Paypal',
+  `payment_method` enum('bank','alipay','wechat','ecny') NOT NULL COMMENT '支付方式类型：银行卡、支付宝、Paypal',
   `account_name` varchar(255) NOT NULL COMMENT '账户名/持卡人',
   `account_number` varchar(255) NOT NULL COMMENT '账户号码/卡号',
   `bank_name` varchar(255) DEFAULT NULL COMMENT '银行名',
