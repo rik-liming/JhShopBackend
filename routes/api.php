@@ -114,7 +114,7 @@ Route::middleware(['check.admin.token'])->group(function () {
     Route::get('/admin/stat/dashboard', [AdminStatController::class, 'getDashboard']);
 
     Route::get('/admin/config/info', [AdminConfigController::class, 'getConfigInfo']);
-    Route::put('/admin/config', [AdminConfigController::class, 'updateConfig']);
+    Route::post('/admin/config', [AdminConfigController::class, 'updateConfig']);
 
     Route::get('/admin/info', [AdminController::class, 'getAdminInfo']);
     Route::post('/admin', [AdminController::class, 'createAdmin']);

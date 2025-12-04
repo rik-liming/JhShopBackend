@@ -49,7 +49,7 @@ CREATE TABLE `jh_admin` (
 --
 
 INSERT INTO `jh_admin` (`id`, `role`, `user_name`, `real_name`, `password`, `email`, `phone`, `avatar`, `last_login_ip`, `last_login_time`, `created_at`, `updated_at`, `status`, `two_factor_secret`) VALUES
-(1, 'superAdmin', 'superAdmin', '超级管理员', '$2y$10$7N/zQ0VifAsI9ruJsRe9P.AZYZizUDddAwBv9cNGw7w0ABiyMXEDC', 'superadmin@jh.com', '13800000002', '/avatars/superadmin.png', '8.219.234.249', '2025-11-18 10:54:19', '2025-10-14 20:41:55', '2025-11-18 10:54:19', 1, '');
+(1, 'superAdmin', 'superAdmin', '超级管理员', '$2y$10$7N/zQ0VifAsI9ruJsRe9P.AZYZizUDddAwBv9cNGw7w0ABiyMXEDC', 'superadmin@jh.com', '13800000002', '/avatars/superadmin.png', '8.219.234.249', NULL, '2025-10-14 20:41:55', '2025-11-18 10:54:19', 1, '');
 
 -- --------------------------------------------------------
 

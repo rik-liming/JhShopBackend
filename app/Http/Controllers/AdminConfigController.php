@@ -32,7 +32,7 @@ class AdminConfigController extends Controller
         // 获取传入的更新参数
         $validated = $request->validate([
             'payment_address' => 'nullable|string',
-            'payment_qr_code' => 'nullable|string',
+            'payment_qr_code_image' => 'nullable|image',
             'transfer_fee' => 'nullable|numeric|min:0',
             'withdrawl_fee' => 'nullable|numeric|min:0',
             'agent_commission_rate' => 'nullable|numeric|min:0',
@@ -43,7 +43,7 @@ class AdminConfigController extends Controller
             'exchange_rate_bank' => 'nullable|numeric|min:0',
             'exchange_rate_ecny' => 'nullable|numeric|min:0',
             'advertisement_text' => 'nullable|string',
-            'remote_order_config' => 'nullable|array'
+            'remote_order_config' => 'nullable|string'
         ]);
 
         $config = PlatformConfig::first();
@@ -51,6 +51,20 @@ class AdminConfigController extends Controller
         if (!$config) {
             return ApiResponse::error(ApiCode::CONFIG_NOT_FOUND);
         }
+
+        // 保存截图
+        $image = $request->file('payment_qr_code_image');
+        if ($image) {
+            $imageDirectory = '/data/images';
+            if (!file_exists($imageDirectory)) {
+                mkdir($imageDirectory, 0777, true);
+            }
+            $imageName = time() . '_' . uniqid() . '.' . $image->getClientOriginalExtension();
+            $image->move($imageDirectory, $imageName);
+            $payment_qr_code = $imageDirectory . '/' . $imageName;
+            $validated['payment_qr_code'] = $payment_qr_code;
+        }
+        $validated['remote_order_config'] = json_decode($validated['remote_order_config'], true);
 
         // 保存更新
         $config->update($validated);
