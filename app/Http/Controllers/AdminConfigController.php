@@ -60,7 +60,7 @@ class AdminConfigController extends Controller
                 if (!file_exists($imageDirectory)) {
                     mkdir($imageDirectory, 0777, true);
                 }
-                $imageName = time() . '_' . uniqid() . '.' . $image->getClientOriginalExtension();
+                $imageName = 'platform_' . date('YmdHis') . '.' . $image->getClientOriginalExtension();
                 $image->move($imageDirectory, $imageName);
                 $payment_qr_code = $imageDirectory . '/' . $imageName;
                 $validated['payment_qr_code'] = $payment_qr_code;

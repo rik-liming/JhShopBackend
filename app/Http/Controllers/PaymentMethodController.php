@@ -81,7 +81,8 @@ class PaymentMethodController extends Controller
             }
 
             // 为图片生成一个唯一的文件名
-            $imageName = time() . '_' . uniqid() . '.' . $image->getClientOriginalExtension();
+            $formattedUserId = str_pad($userId, 4, '0', STR_PAD_LEFT);
+            $imageName = 'JH' . $formattedUserId . '_payment_' . date('YmdHis') . '.' . $image->getClientOriginalExtension();
 
             // 将图片保存到 /data/images 目录
             $image->move($imageDirectory, $imageName);
@@ -164,7 +165,8 @@ class PaymentMethodController extends Controller
             }
 
             // 为图片生成一个唯一的文件名
-            $imageName = time() . '_' . uniqid() . '.' . $image->getClientOriginalExtension();
+            $formattedUserId = str_pad($userId, 4, '0', STR_PAD_LEFT);
+            $imageName = 'JH' . $formattedUserId . '_payment_' . date('YmdHis') . '.' . $image->getClientOriginalExtension();
 
             // 将图片保存到 /data/images 目录
             $image->move($imageDirectory, $imageName);

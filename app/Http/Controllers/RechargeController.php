@@ -83,7 +83,8 @@ class RechargeController extends Controller
             if (!file_exists($imageDirectory)) {
                 mkdir($imageDirectory, 0777, true);
             }
-            $imageName = time() . '_' . uniqid() . '.' . $image->getClientOriginalExtension();
+            $formattedUserId = str_pad($userId, 4, '0', STR_PAD_LEFT);
+            $imageName = 'JH' . $formattedUserId . '_recharge_' . date('YmdHis') . '.' . $image->getClientOriginalExtension();
             $image->move($imageDirectory, $imageName);
             $recharge_images = $imageDirectory . '/' . $imageName;
 
